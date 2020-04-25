@@ -50,7 +50,7 @@ parserSpec = describe "Haskell file Extensions Parser" $ do
         (Right [TypeApplications, LambdaCase])
 
   where
-    itShouldParse :: String -> ExtensionsParseResult -> SpecWith (Arg Expectation)
+    itShouldParse :: String -> [Extension] -> SpecWith (Arg Expectation)
     itShouldParse input res = it
         ("should parse:\n" <> unlines (map ("    " <>) $ lines input)) $
-            parseSourceFile (encodeUtf8 $ pack input) `shouldBe` res
+            parseSourceFile (encodeUtf8 $ pack input) `shouldBe` Right res

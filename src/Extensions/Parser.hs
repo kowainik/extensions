@@ -50,7 +50,7 @@ the function/import/module name.
 extensionsP :: Parser [Extension]
 extensionsP = concat <$> manyTill
     (try singleExtensionsP <|> try commentP)
-    (eof <|> ( () <$ manyTill endOfLine letter))
+    (eof <|> (() <$ manyTill endOfLine letter))
 
 {- | Single LANGUAGE pragma parser.
 
