@@ -9,11 +9,9 @@ Parser for Haskell Modules to get all Haskell Language Extensions used.
 -}
 
 module Extensions.Parser
-       ( parseFilePath
-       , parseSourceFile
-
-         -- * Helper types
-       , ExtensionsParseResult
+       ( parseFile
+       , parseSource
+       , parseSourceWithPath
        ) where
 
 import Data.ByteString (ByteString)
@@ -27,20 +25,23 @@ import Text.Read (readMaybe)
 import qualified Data.ByteString as BS
 
 
--- | Type alias for the resulting type of module parsing.
-type ExtensionsParseResult = Either ParseError [Extension]
-
 {- | By the given file path, reads the file and returns parsed list of
 'Extension's, if parsing succeeds.
 -}
-parseFilePath :: FilePath -> IO (Either ParseError [Extension])
-parseFilePath file = parseSourceFile <$> BS.readFile file
+parseFile :: FilePath -> IO (Either ParseError [Extension])
+parseFile file = parseSource <$> BS.readFile file
+
+{- | By the given file path and file source content, returns parsed list of
+'Extension's, if parsing succeeds.
+-}
+parseSourceWithPath :: FilePath -> ByteString -> Either ParseError [Extension]
+parseSourceWithPath = parse extensionsP
 
 {- | By the given file source content, returns parsed list of
 'Extension's, if parsing succeeds.
 -}
-parseSourceFile :: ByteString -> Either ParseError [Extension]
-parseSourceFile = parse extensionsP "SourceName"
+parseSource :: ByteString -> Either ParseError [Extension]
+parseSource = parseSourceWithPath "SourceName"
 
 {- | The main parser of 'Extension's.
 
