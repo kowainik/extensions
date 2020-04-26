@@ -16,6 +16,9 @@ parserSpec = describe "Haskell file Extensions Parser" $ do
     itShouldParse "{-# LANGUAGE TypeApplications #-}" [TypeApplications]
     itShouldParse "{-# LaNgUaGe CPP #-}" [Cpp]
     itShouldParseOnOff "{-# LANGUAGE NoImplicitPrelude #-}" [Off ImplicitPrelude]
+    itShouldParseOnOff
+        "{-# LANGUAGE NondecreasingIndentation #-}"
+        [On NondecreasingIndentation]
     itShouldParse "{-#language TypeApplications#-}" [TypeApplications]
     itShouldParse "{-# LANGUAGE TypeApplications, LambdaCase#-}" [TypeApplications, LambdaCase]
     itShouldParse "{-# LANGUAGE   TypeApplications  , LambdaCase   #-}" [TypeApplications, LambdaCase]
