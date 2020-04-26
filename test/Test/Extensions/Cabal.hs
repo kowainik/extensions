@@ -21,8 +21,10 @@ cabalSpec = describe "Cabal file Extensions Parser" $ do
     expectedMap = HM.fromList
         [ "src/Extensions.hs"              `to` defaultExtensions
         , "src/Extensions/Cabal.hs"        `to` defaultExtensions
+        , "src/Extensions/OnOff.hs"       `to` defaultExtensions
         , "src/Extensions/Parser.hs"       `to` defaultExtensions
         , "test/Test/Extensions/Cabal.hs"  `to` defaultExtensions
+        , "test/Test/Extensions/OnOff.hs"  `to` defaultExtensions
         , "test/Test/Extensions/Parser.hs" `to` defaultExtensions
         , "test/Spec.hs"                   `to` defaultExtensions
         ]

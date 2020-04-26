@@ -1,5 +1,3 @@
-{-# OPTIONS_GHC -fno-warn-orphans #-}
-
 {- |
 Copyright: (c) 2020 Kowainik
 SPDX-License-Identifier: MPL-2.0
@@ -21,6 +19,8 @@ import Text.Parsec (ParseError, alphaNum, between, char, eof, many, many1, manyT
 import Text.Parsec.ByteString (Parser)
 import Text.Parsec.Char (anyChar, endOfLine, letter, newline, space, spaces, string)
 import Text.Read (readMaybe)
+
+import Extensions.OnOff ()
 
 import qualified Data.ByteString as BS
 
@@ -123,5 +123,3 @@ readExtension = \case
     "CPP" -> Just Cpp
     "Cpp" -> Nothing
     s -> readMaybe s
-
-deriving stock instance Read Extension
