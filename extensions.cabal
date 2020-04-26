@@ -74,11 +74,13 @@ test-suite extensions-test
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test
   main-is:             Spec.hs
-  other-modules:       Test.Extensions.Parser
+  other-modules:       Test.Extensions.Cabal
+                       Test.Extensions.Parser
   build-depends:       extensions
                      , ghc-boot-th
                      , hspec
                      , text ^>= 1.2
+                     , unordered-containers
   ghc-options:         -threaded
                        -rtsopts
                        -with-rtsopts=-N
