@@ -118,8 +118,10 @@ readExtension :: String -> Maybe Extension
 readExtension = \case
     "GeneralisedNewtypeDeriving" -> Just GeneralizedNewtypeDeriving
     "NamedFieldPuns" -> Just RecordPuns
+    "RecordPuns" -> Nothing
     "Rank2Types" -> Just RankNTypes
     "CPP" -> Just Cpp
+    "Cpp" -> Nothing
     s -> readMaybe s
 
 deriving stock instance Read Extension
