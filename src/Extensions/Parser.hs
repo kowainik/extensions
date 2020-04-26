@@ -13,6 +13,7 @@ module Extensions.Parser
        ) where
 
 import Data.ByteString (ByteString)
+import Data.Foldable (asum)
 import GHC.LanguageExtensions.Type (Extension (..))
 import Text.Parsec (ParseError, alphaNum, between, char, eof, many, many1, manyTill, noneOf, oneOf,
                     optional, parse, sepBy1, try, unexpected, (<|>))
@@ -20,7 +21,7 @@ import Text.Parsec.ByteString (Parser)
 import Text.Parsec.Char (anyChar, endOfLine, letter, newline, space, spaces, string)
 import Text.Read (readMaybe)
 
-import Extensions.OnOff ()
+import Extensions.OnOff (OnOffExtension (..))
 
 import qualified Data.ByteString as BS
 
@@ -28,19 +29,19 @@ import qualified Data.ByteString as BS
 {- | By the given file path, reads the file and returns parsed list of
 'Extension's, if parsing succeeds.
 -}
-parseFile :: FilePath -> IO (Either ParseError [Extension])
+parseFile :: FilePath -> IO (Either ParseError [OnOffExtension])
 parseFile file = parseSource <$> BS.readFile file
 
 {- | By the given file path and file source content, returns parsed list of
 'Extension's, if parsing succeeds.
 -}
-parseSourceWithPath :: FilePath -> ByteString -> Either ParseError [Extension]
+parseSourceWithPath :: FilePath -> ByteString -> Either ParseError [OnOffExtension]
 parseSourceWithPath = parse extensionsP
 
 {- | By the given file source content, returns parsed list of
 'Extension's, if parsing succeeds.
 -}
-parseSource :: ByteString -> Either ParseError [Extension]
+parseSource :: ByteString -> Either ParseError [OnOffExtension]
 parseSource = parseSourceWithPath "SourceName"
 
 {- | The main parser of 'Extension's.
@@ -48,7 +49,7 @@ parseSource = parseSourceWithPath "SourceName"
 It parses language pragmas or comments until end of file or the first line with
 the function/import/module name.
 -}
-extensionsP :: Parser [Extension]
+extensionsP :: Parser [OnOffExtension]
 extensionsP = concat <$> manyTill
     (try singleExtensionsP <|> try commentP <|> try cppP)
     (eof <|> (() <$ manyTill endOfLine letter))
@@ -62,16 +63,16 @@ extensionsP = concat <$> manyTill
  #-}
 @
 -}
-singleExtensionsP :: Parser [Extension]
-singleExtensionsP = pragma (commaSep (tryCpp *> extensionP <* tryCpp) <* spaces)
+singleExtensionsP :: Parser [OnOffExtension]
+singleExtensionsP = pragma (commaSep (tryCpp *> onOffExtensionP <* tryCpp) <* spaces)
   where
     tryCpp :: Parser ()
     tryCpp = try (optional cppP)
 
 -- | Parses all known 'Extension's.
-extensionP :: Parser Extension
-extensionP = (spaces *> many1 alphaNum <* spaces) >>= \txt ->
-    case readExtension txt of
+onOffExtensionP :: Parser OnOffExtension
+onOffExtensionP = (spaces *> many1 alphaNum <* spaces) >>= \txt ->
+    case readOnOffExtension txt of
         Just ext -> pure ext
         Nothing  -> unexpected $ "Unknown Extension: " <> txt
 
@@ -111,11 +112,23 @@ cppP = [] <$ many newline <* try (char '#' <* noneOf "-") <* manyTill anyChar (t
 newLines :: Parser ()
 newLines = () <$ many (space <|> endOfLine)
 
+readOnOffExtension :: String -> Maybe OnOffExtension
+readOnOffExtension s = asum
+    [ On  <$> readOnExtension s
+    , Off <$> readOffExtension
+    ]
+  where
+    readOffExtension :: Maybe Extension
+    readOffExtension = do
+        ("No", ext) <- Just $ splitAt 2 s
+        readOnExtension ext
+
+
 {- | Parse 'Extension' from a string. 'Read' instance for 'Extension'
 doesn't always work since some extensions are named differently.
 -}
-readExtension :: String -> Maybe Extension
-readExtension = \case
+readOnExtension :: String -> Maybe Extension
+readOnExtension = \case
     "GeneralisedNewtypeDeriving" -> Just GeneralizedNewtypeDeriving
     "NamedFieldPuns" -> Just RecordPuns
     "RecordPuns" -> Nothing

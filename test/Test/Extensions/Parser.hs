@@ -7,6 +7,7 @@ import Data.Text.Encoding (encodeUtf8)
 import GHC.LanguageExtensions.Type (Extension (..))
 import Test.Hspec (Arg, Expectation, Spec, SpecWith, describe, it, shouldBe)
 
+import Extensions.OnOff (OnOffExtension (..))
 import Extensions.Parser (parseSource)
 
 
@@ -14,6 +15,10 @@ parserSpec :: Spec
 parserSpec = describe "Haskell file Extensions Parser" $ do
     itShouldParse "{-# LANGUAGE TypeApplications #-}" [TypeApplications]
     itShouldParse "{-# LaNgUaGe CPP #-}" [Cpp]
+    itShouldParseOnOff "{-# LANGUAGE NoImplicitPrelude #-}" [Off ImplicitPrelude]
+    itShouldParseOnOff
+        "{-# LANGUAGE NondecreasingIndentation #-}"
+        [On NondecreasingIndentation]
     itShouldParse "{-#language TypeApplications#-}" [TypeApplications]
     itShouldParse "{-# LANGUAGE TypeApplications, LambdaCase#-}" [TypeApplications, LambdaCase]
     itShouldParse "{-# LANGUAGE   TypeApplications  , LambdaCase   #-}" [TypeApplications, LambdaCase]
@@ -123,6 +128,9 @@ parserSpec = describe "Haskell file Extensions Parser" $ do
 
   where
     itShouldParse :: String -> [Extension] -> SpecWith (Arg Expectation)
-    itShouldParse input res = it
+    itShouldParse s = itShouldParseOnOff s . map On
+
+    itShouldParseOnOff :: String -> [OnOffExtension] -> SpecWith (Arg Expectation)
+    itShouldParseOnOff input res = it
         ("should parse:\n" <> unlines (map ("    " <>) $ lines input)) $
             parseSource (encodeUtf8 $ pack input) `shouldBe` Right res
