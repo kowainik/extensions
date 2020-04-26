@@ -2,13 +2,14 @@ module Test.Extensions.Cabal
     ( cabalSpec
     ) where
 
+import Data.Map.Strict (Map)
 import GHC.LanguageExtensions.Type (Extension (..))
 import Test.Hspec (Spec, describe, it, runIO, shouldBe)
 
 import Extensions.Cabal (parseCabalExtensions)
 import Extensions.OnOff (OnOffExtension (..))
 
-import qualified Data.HashMap.Strict as HM
+import qualified Data.Map.Strict as Map
 
 
 cabalSpec :: Spec
@@ -18,8 +19,8 @@ cabalSpec = describe "Cabal file Extensions Parser" $ do
     it "should parse project Cabal file" $
         extensionsMap `shouldBe` expectedMap
   where
-    expectedMap :: HM.HashMap FilePath [OnOffExtension]
-    expectedMap = HM.fromList
+    expectedMap :: Map FilePath [OnOffExtension]
+    expectedMap = Map.fromList
         [ "src/Extensions.hs"              `to` defaultExtensions
         , "src/Extensions/Cabal.hs"        `to` defaultExtensions
         , "src/Extensions/OnOff.hs"        `to` defaultExtensions
