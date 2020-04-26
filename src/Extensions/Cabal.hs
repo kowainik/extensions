@@ -32,6 +32,8 @@ import GHC.LanguageExtensions.Type (Extension (..))
 import System.Directory (doesFileExist)
 import System.FilePath ((<.>), (</>))
 
+import Extensions.OnOff (OnOffExtension (..))
+
 import qualified Data.HashMap.Strict as HM
 import qualified Language.Haskell.Extension as Cabal
 
@@ -40,7 +42,7 @@ import qualified Language.Haskell.Extension as Cabal
 {- | Parse default extensions from a @.cabal@ file under given
 'FilePath'.
 -}
-parseCabalExtensions :: FilePath -> IO (HashMap FilePath [Extension])
+parseCabalExtensions :: FilePath -> IO (HashMap FilePath [OnOffExtension])
 parseCabalExtensions cabalPath = do
     pkgDesc <- readGenericPackageDescription normal cabalPath
     extractCabalExtensions pkgDesc
@@ -48,7 +50,7 @@ parseCabalExtensions cabalPath = do
 {- | Extract Haskell Language extensions from a Cabal package
 description.
 -}
-extractCabalExtensions :: GenericPackageDescription -> IO (HashMap FilePath [Extension])
+extractCabalExtensions :: GenericPackageDescription -> IO (HashMap FilePath [OnOffExtension])
 extractCabalExtensions GenericPackageDescription{..} = mconcat
     [ foldMap    libraryToExtensions condLibrary
     , foldSndMap libraryToExtensions condSubLibraries
@@ -62,18 +64,18 @@ extractCabalExtensions GenericPackageDescription{..} = mconcat
     foldSndMap f = foldMap f . map snd
 
 
-    libraryToExtensions :: CondTree var deps Library -> IO (HashMap FilePath [Extension])
+    libraryToExtensions :: CondTree var deps Library -> IO (HashMap FilePath [OnOffExtension])
     libraryToExtensions = condTreeToExtensions
         (map toModulePath . exposedModules)
         libBuildInfo
 
-    foreignToExtensions :: CondTree var deps ForeignLib -> IO (HashMap FilePath [Extension])
+    foreignToExtensions :: CondTree var deps ForeignLib -> IO (HashMap FilePath [OnOffExtension])
     foreignToExtensions = condTreeToExtensions (const []) foreignLibBuildInfo
 
-    exeToExtensions :: CondTree var deps Executable -> IO (HashMap FilePath [Extension])
+    exeToExtensions :: CondTree var deps Executable -> IO (HashMap FilePath [OnOffExtension])
     exeToExtensions = condTreeToExtensions (\Executable{..} -> [modulePath]) buildInfo
 
-    testToExtensions :: CondTree var deps TestSuite -> IO (HashMap FilePath [Extension])
+    testToExtensions :: CondTree var deps TestSuite -> IO (HashMap FilePath [OnOffExtension])
     testToExtensions = condTreeToExtensions testMainPath testBuildInfo
       where
         testMainPath :: TestSuite -> [FilePath]
@@ -82,7 +84,7 @@ extractCabalExtensions GenericPackageDescription{..} = mconcat
             TestSuiteLibV09 _ m    -> [toModulePath m]
             TestSuiteUnsupported _ -> []
 
-    benchToExtensions :: CondTree var deps Benchmark -> IO (HashMap FilePath [Extension])
+    benchToExtensions :: CondTree var deps Benchmark -> IO (HashMap FilePath [OnOffExtension])
     benchToExtensions = condTreeToExtensions benchMainPath benchmarkBuildInfo
       where
         benchMainPath :: Benchmark -> [FilePath]
@@ -97,7 +99,7 @@ condTreeToExtensions
     -- ^ Extract 'BuildInfo' from component
     -> CondTree var deps comp
     -- ^ Cabal stanza
-    -> IO (HashMap FilePath [Extension])
+    -> IO (HashMap FilePath [OnOffExtension])
 condTreeToExtensions extractModules extractBuildInfo condTree = do
     let comp = condTreeData condTree
     let buildInfo = extractBuildInfo comp
@@ -108,16 +110,16 @@ condTreeToExtensions extractModules extractBuildInfo condTree = do
     modulesToExtensions extensions srcDirs modules
 
 modulesToExtensions
-    :: [Extension]
+    :: [OnOffExtension]
     -- ^ List of default extensions in the stanza
     -> [FilePath]
     -- ^ hs-src-dirs
     -> [FilePath]
     -- ^ All modules in the stanza
-    -> IO (HashMap FilePath [Extension])
+    -> IO (HashMap FilePath [OnOffExtension])
 modulesToExtensions extensions srcDirs = go []
   where
-    go :: [FilePath] -> [FilePath] -> IO (HashMap FilePath [Extension])
+    go :: [FilePath] -> [FilePath] -> IO (HashMap FilePath [OnOffExtension])
     go files [] = pure $ HM.fromList $ map (, extensions) files
     go files (m:ms) = findDir m srcDirs >>= \case
         Nothing         -> go files ms
@@ -136,10 +138,10 @@ modulesToExtensions extensions srcDirs = go []
 toModulePath :: ModuleName -> FilePath
 toModulePath moduleName = toFilePath moduleName <.> "hs"
 
-cabalToGhcExtension :: Cabal.Extension -> Maybe Extension
+cabalToGhcExtension :: Cabal.Extension -> Maybe OnOffExtension
 cabalToGhcExtension = \case
-    Cabal.EnableExtension  extension -> toGhcExtension extension
-    Cabal.DisableExtension extension -> toGhcExtension extension
+    Cabal.EnableExtension  extension -> On  <$> toGhcExtension extension
+    Cabal.DisableExtension extension -> Off <$> toGhcExtension extension
     Cabal.UnknownExtension _ -> Nothing
 
 toGhcExtension :: Cabal.KnownExtension -> Maybe Extension
