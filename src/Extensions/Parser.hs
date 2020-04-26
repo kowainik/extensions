@@ -16,10 +16,10 @@ module Extensions.Parser
 
 import Data.ByteString (ByteString)
 import GHC.LanguageExtensions.Type (Extension (..))
-import Text.Parsec (ParseError, alphaNum, between, char, eof, many, many1, manyTill, oneOf, parse,
-                    sepBy1, try, unexpected, (<|>))
+import Text.Parsec (ParseError, alphaNum, between, char, eof, many, many1, manyTill, noneOf, oneOf,
+                    optional, parse, sepBy1, try, unexpected, (<|>))
 import Text.Parsec.ByteString (Parser)
-import Text.Parsec.Char (anyChar, endOfLine, letter, space, spaces, string)
+import Text.Parsec.Char (anyChar, endOfLine, letter, newline, space, spaces, string)
 import Text.Read (readMaybe)
 
 import qualified Data.ByteString as BS
@@ -50,7 +50,7 @@ the function/import/module name.
 -}
 extensionsP :: Parser [Extension]
 extensionsP = concat <$> manyTill
-    (try singleExtensionsP <|> try commentP)
+    (try singleExtensionsP <|> try commentP <|> try cppP)
     (eof <|> (() <$ manyTill endOfLine letter))
 
 {- | Single LANGUAGE pragma parser.
@@ -63,18 +63,23 @@ extensionsP = concat <$> manyTill
 @
 -}
 singleExtensionsP :: Parser [Extension]
-singleExtensionsP = pragma (commaSep extensionP <* spaces)
+singleExtensionsP = pragma (commaSep (tryCpp *> extensionP <* tryCpp) <* spaces)
+  where
+    tryCpp :: Parser ()
+    tryCpp = try (optional cppP)
 
 -- | Parses all known 'Extension's.
 extensionP :: Parser Extension
-extensionP = many1 alphaNum >>= \txt -> case readMaybe @Extension txt of
-    Just ext -> pure ext
-    Nothing  -> unexpected $ "Unknown Extension: " <> txt
+extensionP = (spaces *> many1 alphaNum <* spaces) >>= \txt ->
+    case readMaybe @Extension txt of
+        Just ext -> pure ext
+        Nothing  -> unexpected $ "Unknown Extension: " <> txt
 
 {- | Parser for standard pragma keywords: @{-# LANGUAGE XXX #-}@
 -}
 pragma :: Parser a -> Parser a
-pragma p = between (string "{-#") (string "#-}" <* newLines) (language *> p)
+pragma p = between (string "{-#") (string "#-}" <* newLines)
+    (language *> p <* newLines)
   where
     -- case insensitive word @LANGUAGE@.
     language :: Parser ()
@@ -98,6 +103,9 @@ commaSep p = p `sepBy1` (try $ newLines *> char ',' <* newLines)
 commentP :: Parser [a]
 commentP = [] <$ (spaces *> string "{-" *> manyTill anyChar (try $ string "-}"))
     <* newLines
+
+cppP :: Parser [a]
+cppP = [] <$ many newline <* try (char '#' <* noneOf "-") <* manyTill anyChar (try endOfLine)
 
 -- | Any combination of spaces and newlines.
 newLines :: Parser ()

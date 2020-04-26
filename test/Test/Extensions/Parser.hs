@@ -48,6 +48,77 @@ parserSpec = describe "Haskell file Extensions Parser" $ do
         , "hello :: IO ()"
         ])
         [TypeApplications, LambdaCase]
+    itShouldParse (unlines
+        [ "#if __GLASGOW_HASKELL__ < 810"
+        , "{-# LANGUAGE TypeApplications #-}"
+        , "#endif"
+        , "{-# LANGUAGE LambdaCase #-}"
+        ])
+        [TypeApplications, LambdaCase]
+    itShouldParse (unlines
+        [ "#if __GLASGOW_HASKELL__ < 810"
+        , "{-# LANGUAGE TypeApplications #-}"
+        , "#else"
+        , "{-# LANGUAGE LambdaCase #-}"
+        , "#endif"
+        , "{-# LANGUAGE DerivingStrategies #-}"
+        ])
+        [TypeApplications, LambdaCase, DerivingStrategies]
+    itShouldParse (unlines
+        [ "#if __GLASGOW_HASKELL__ < 810"
+        , "{-# LANGUAGE TypeApplications #-}"
+        , "{-# LANGUAGE LambdaCase #-}"
+        , "#endif"
+        , "{-# LANGUAGE DerivingStrategies #-}"
+        ])
+        [TypeApplications, LambdaCase, DerivingStrategies]
+    itShouldParse (unlines
+        [ "{-# LANGUAGE"
+        , "#if WHAT_IS THIS_SYNTAX o_O"
+        , "TypeApplications,"
+        , "#else"
+        , "LambdaCase"
+        , "#-}"
+        ])
+        [TypeApplications, LambdaCase]
+    itShouldParse (unlines
+        [ "{-# LANGUAGE"
+        , "#if WHAT_IS THIS_SYNTAX o_O"
+        , " TypeApplications,"
+        , "#else"
+        , " LambdaCase"
+        , "#-}"
+        ])
+        [TypeApplications, LambdaCase]
+    itShouldParse (unlines
+        [ "{-# LANGUAGE"
+        , "#if WHAT_IS THIS_SYNTAX o_O"
+        , "TypeApplications,"
+        , "#else"
+        , "LambdaCase  "
+        , "#-}"
+        ])
+        [TypeApplications, LambdaCase]
+    itShouldParse (unlines
+        [ "{-# LANGUAGE"
+        , "#if WHAT_IS THIS_SYNTAX o_O"
+        , "TypeApplications,"
+        , "#else"
+        , "LambdaCase"
+        , "#endif"
+        , "#-}"
+        ])
+        [TypeApplications, LambdaCase]
+    itShouldParse (unlines
+        [ "{-# LANGUAGE"
+        , "#if WHAT_IS THIS_SYNTAX o_O"
+        , "TypeApplications,"
+        , "#else"
+        , "LambdaCase  "
+        , "#endif"
+        , "#-}"
+        ])
+        [TypeApplications, LambdaCase]
 
   where
     itShouldParse :: String -> [Extension] -> SpecWith (Arg Expectation)
