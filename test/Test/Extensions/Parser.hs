@@ -14,6 +14,14 @@ import Extensions.Parser (ParseError (..), parseSource)
 
 parserSpec :: Spec
 parserSpec = describe "Haskell file Extensions Parser" $ do
+    failSpec
+    onlyExtensionsSpec
+    singleLineCommentsSpec
+    multiLineCommentsSpec
+    cppSpec
+
+failSpec :: Spec
+failSpec = describe "Expected test failures" $ do
     itShouldFail
         "{-# LANGUAGE DependentTypes #-}"
         (UnknownExtensions $ "DependentTypes" :| [])
@@ -23,6 +31,8 @@ parserSpec = describe "Haskell file Extensions Parser" $ do
         ] )
         (UnknownExtensions $ "Cpp" :| [])
 
+onlyExtensionsSpec :: Spec
+onlyExtensionsSpec = describe "Parsing only extensions without anything else" $ do
     itShouldParse "{-# LANGUAGE TypeApplications #-}" [TypeApplications]
     itShouldParse "{-# LaNgUaGe CPP #-}" [Cpp]
     itShouldParseOnOff "{-# LANGUAGE NoImplicitPrelude #-}" [Off ImplicitPrelude]
@@ -50,6 +60,80 @@ parserSpec = describe "Haskell file Extensions Parser" $ do
         ])
         [TypeApplications, LambdaCase]
     itShouldParse (unlines
+        [ "{-# LANGUAGE"
+        , "    CPP"
+        , "  , TypeApplications"
+        , "  , LambdaCase"
+        , "#-}"
+        ])
+        [Cpp, TypeApplications, LambdaCase]
+
+singleLineCommentsSpec :: Spec
+singleLineCommentsSpec = describe "Parsing extensions with single-line comments" $ do
+    itShouldParse (unlines
+        [ "-- hello"
+        , "{-# LANGUAGE LambdaCase #-}"
+        ])
+        [LambdaCase]
+    itShouldParse (unlines
+        [ "{-# LANGUAGE LambdaCase #-}"
+        , "-- hello "
+        ])
+        [LambdaCase]
+    itShouldParse (unlines
+        [ "-- For better syntax"
+        , "{-# LANGUAGE LambdaCase #-}"
+        , "-- For explicit type annotations"
+        , "{-# LANGUAGE TypeApplications #-}"
+        ])
+        [LambdaCase, TypeApplications]
+    itShouldParse (unlines
+        [ "    -- Comment with indentation"
+        , "{-# LANGUAGE LambdaCase #-}"
+        , "    -- Another comment with indentation"
+        , "{-# LANGUAGE TypeApplications #-}"
+        ])
+        [LambdaCase, TypeApplications]
+    itShouldParse (unlines
+        [ "{-# LANGUAGE"
+        , "-- hello"
+        , "LambdaCase  "
+        , "#-}"
+        ])
+        [LambdaCase]
+    itShouldParse (unlines
+        [ "{-# LANGUAGE"
+        , "TypeApplications,"
+        , "-- hello"
+        , "LambdaCase  "
+        , "#-}"
+        ])
+        [TypeApplications, LambdaCase]
+    itShouldParse (unlines
+        [ "{-# LANGUAGE"
+        , "  TypeApplications,"
+        , "  -- hello"
+        , "  LambdaCase  "
+        , "#-}"
+        ])
+        [TypeApplications, LambdaCase]
+    itShouldParse (unlines
+        [ "{-# LANGUAGE"
+        , "  -- For explicit type annotations"
+        , "  TypeApplications,"
+        , "  -- For nicer syntax"
+        , "  LambdaCase  "
+        , "  -- That's all folks!"
+        , "#-}"
+        ])
+        [TypeApplications, LambdaCase]
+
+multiLineCommentsSpec :: Spec
+multiLineCommentsSpec = describe "Parsing extensions with multi-line comments" $ do
+    itShouldParse
+        "{-# LANGUAGE {- WHAT IS -} LambdaCase {- THIS SYNTAX? o_O -} #-}"
+        [LambdaCase]
+    itShouldParse (unlines
         [ "{-# LANGUAGE   TypeApplications  , LambdaCase   #-}"
         , "{- hello -}"
         ])
@@ -69,6 +153,19 @@ parserSpec = describe "Haskell file Extensions Parser" $ do
         , "hello :: IO ()"
         ])
         [TypeApplications, LambdaCase]
+    itShouldParse (unlines
+        [ "{-# LANGUAGE TypeApplications #-}"
+        , "{- This is"
+        , "a very long"
+        , "multiline"
+        , "comment"
+        , "-}"
+        , "{-# LANGUAGE LambdaCase #-}"
+        ])
+        [TypeApplications, LambdaCase]
+
+cppSpec :: Spec
+cppSpec = describe "Parsing extensions with CPP" $ do
     itShouldParse (unlines
         [ "#if __GLASGOW_HASKELL__ < 810"
         , "{-# LANGUAGE TypeApplications #-}"
@@ -141,16 +238,16 @@ parserSpec = describe "Haskell file Extensions Parser" $ do
         ])
         [TypeApplications, LambdaCase]
 
-  where
-    itShouldParse :: String -> [Extension] -> SpecWith (Arg Expectation)
-    itShouldParse s = itShouldParseOnOff s . map On
+itShouldParse :: String -> [Extension] -> SpecWith (Arg Expectation)
+itShouldParse s = itShouldParseOnOff s . map On
 
-    itShouldParseOnOff :: String -> [OnOffExtension] -> SpecWith (Arg Expectation)
-    itShouldParseOnOff input res = it
-        ("should parse:\n" <> unlines (map ("    " <>) $ lines input)) $
-            parseSource (encodeUtf8 $ pack input) `shouldBe` Right res
+itShouldParseOnOff :: String -> [OnOffExtension] -> SpecWith (Arg Expectation)
+itShouldParseOnOff input res = it ("should parse:\n" <> indent input) $
+    parseSource (encodeUtf8 $ pack input) `shouldBe` Right res
 
-    itShouldFail :: String -> ParseError -> SpecWith (Arg Expectation)
-    itShouldFail input err = it
-        ("should not parse:\n" <> unlines (map ("    " <>) $ lines input)) $
-            parseSource (encodeUtf8 $ pack input) `shouldBe` Left err
+itShouldFail :: String -> ParseError -> SpecWith (Arg Expectation)
+itShouldFail input err = it ("should not parse:\n" <> indent input) $
+    parseSource (encodeUtf8 $ pack input) `shouldBe` Left err
+
+indent :: String -> String
+indent = unlines . map ("      " <>) . lines

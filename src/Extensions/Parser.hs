@@ -95,10 +95,10 @@ extensionsP = concat <$> manyTill
 @
 -}
 singleExtensionsP :: Parser [ParsedExtension]
-singleExtensionsP = pragma (commaSep (tryCpp *> extensionP <* tryCpp) <* spaces)
+singleExtensionsP = pragma (commaSep (nonExtP *> extensionP <* nonExtP) <* spaces)
   where
-    tryCpp :: Parser ()
-    tryCpp = try (optional cppP)
+    nonExtP :: Parser ()
+    nonExtP = optional $ try cppP <|> try commentP
 
 -- | Parses all known and unknown 'Extension's.
 extensionP :: Parser ParsedExtension
@@ -133,8 +133,15 @@ commaSep p = p `sepBy1` (try $ newLines *> char ',' <* newLines)
 {- | Haskell comment parser.
 -}
 commentP :: Parser [a]
-commentP = [] <$ (spaces *> string "{-" *> manyTill anyChar (try $ string "-}"))
-    <* newLines
+commentP = newLines *> (try singleLineCommentP <|> try multiLineCommentP) <* newLines
+  where
+    singleLineCommentP :: Parser [a]
+    singleLineCommentP = [] <$
+        (string "--" *> manyTill anyChar (try endOfLine))
+
+    multiLineCommentP :: Parser [a]
+    multiLineCommentP = [] <$
+        (string "{-" *> manyTill anyChar (try $ string "-}"))
 
 cppP :: Parser [a]
 cppP = [] <$ many newline <* try (char '#' <* noneOf "-") <* manyTill anyChar (try endOfLine)
