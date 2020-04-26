@@ -2,17 +2,27 @@ module Test.Extensions.Parser
     ( parserSpec
     ) where
 
+import Data.List.NonEmpty (NonEmpty (..))
 import Data.Text (pack)
 import Data.Text.Encoding (encodeUtf8)
 import GHC.LanguageExtensions.Type (Extension (..))
 import Test.Hspec (Arg, Expectation, Spec, SpecWith, describe, it, shouldBe)
 
 import Extensions.OnOff (OnOffExtension (..))
-import Extensions.Parser (parseSource)
+import Extensions.Parser (ParseError (..), parseSource)
 
 
 parserSpec :: Spec
 parserSpec = describe "Haskell file Extensions Parser" $ do
+    itShouldFail
+        "{-# LANGUAGE DependentTypes #-}"
+        (UnknownExtensions $ "DependentTypes" :| [])
+    itShouldFail ( unlines
+        [ "{-# LANGUAGE LambdaCase #-}"
+        , "{-# LANGUAGE Cpp #-}"
+        ] )
+        (UnknownExtensions $ "Cpp" :| [])
+
     itShouldParse "{-# LANGUAGE TypeApplications #-}" [TypeApplications]
     itShouldParse "{-# LaNgUaGe CPP #-}" [Cpp]
     itShouldParseOnOff "{-# LANGUAGE NoImplicitPrelude #-}" [Off ImplicitPrelude]
@@ -27,6 +37,11 @@ parserSpec = describe "Haskell file Extensions Parser" $ do
         , "{-# LANGUAGE LambdaCase #-}"
         ] )
         [TypeApplications, LambdaCase]
+    itShouldParse ( unlines
+        [ "{-# LANGUAGE GeneralizedNewtypeDeriving #-}"
+        , "{-# LANGUAGE GeneralisedNewtypeDeriving #-}"
+        ] )
+        [GeneralizedNewtypeDeriving, GeneralizedNewtypeDeriving]
     itShouldParse (unlines
         [ "{-# LANGUAGE"
         , " TypeApplications,"
@@ -134,3 +149,8 @@ parserSpec = describe "Haskell file Extensions Parser" $ do
     itShouldParseOnOff input res = it
         ("should parse:\n" <> unlines (map ("    " <>) $ lines input)) $
             parseSource (encodeUtf8 $ pack input) `shouldBe` Right res
+
+    itShouldFail :: String -> ParseError -> SpecWith (Arg Expectation)
+    itShouldFail input err = it
+        ("should not parse:\n" <> unlines (map ("    " <>) $ lines input)) $
+            parseSource (encodeUtf8 $ pack input) `shouldBe` Left err

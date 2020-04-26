@@ -7,16 +7,20 @@ Parser for Haskell Modules to get all Haskell Language Extensions used.
 -}
 
 module Extensions.Parser
-       ( parseFile
+       ( ParseError (..)
+       , parseFile
        , parseSource
        , parseSourceWithPath
        ) where
 
+import Data.Bifunctor (first)
 import Data.ByteString (ByteString)
+import Data.Either (partitionEithers)
 import Data.Foldable (asum)
+import Data.List.NonEmpty (NonEmpty (..))
 import GHC.LanguageExtensions.Type (Extension (..))
-import Text.Parsec (ParseError, alphaNum, between, char, eof, many, many1, manyTill, noneOf, oneOf,
-                    optional, parse, sepBy1, try, unexpected, (<|>))
+import Text.Parsec (alphaNum, between, char, eof, many, many1, manyTill, noneOf, oneOf, optional,
+                    parse, sepBy1, try, (<|>))
 import Text.Parsec.ByteString (Parser)
 import Text.Parsec.Char (anyChar, endOfLine, letter, newline, space, spaces, string)
 import Text.Read (readMaybe)
@@ -24,19 +28,46 @@ import Text.Read (readMaybe)
 import Extensions.OnOff (OnOffExtension (..))
 
 import qualified Data.ByteString as BS
+import qualified Text.Parsec as Parsec
 
+
+data ParseError
+    -- | File parsing error.
+    = ParsecError Parsec.ParseError
+    -- | Uknown extensions were used in the module.
+    | UnknownExtensions (NonEmpty String)
+    deriving stock (Show, Eq)
+
+-- | Internal data type for known and unknown extensions.
+data ParsedExtension
+    = KnownExtension OnOffExtension
+    | UnknownExtension String
+
+handleParsedExtensions :: [ParsedExtension] -> Either (NonEmpty String) [OnOffExtension]
+handleParsedExtensions = handleResult . partitionEithers . map toEither
+  where
+    toEither :: ParsedExtension -> Either String OnOffExtension
+    toEither (UnknownExtension ext) = Left ext
+    toEither (KnownExtension ext)   = Right ext
+
+    handleResult :: ([String], [OnOffExtension]) -> Either (NonEmpty String) [OnOffExtension]
+    handleResult (unknown, known) = case unknown of
+        []   -> Right known
+        x:xs -> Left $ x :| xs
 
 {- | By the given file path, reads the file and returns parsed list of
 'Extension's, if parsing succeeds.
 -}
 parseFile :: FilePath -> IO (Either ParseError [OnOffExtension])
-parseFile file = parseSource <$> BS.readFile file
+parseFile file = parseSourceWithPath file <$> BS.readFile file
 
 {- | By the given file path and file source content, returns parsed list of
 'Extension's, if parsing succeeds.
 -}
 parseSourceWithPath :: FilePath -> ByteString -> Either ParseError [OnOffExtension]
-parseSourceWithPath = parse extensionsP
+parseSourceWithPath path src = case parse extensionsP path src of
+    Left err         -> Left $ ParsecError err
+    Right parsedExts -> first UnknownExtensions $ handleParsedExtensions parsedExts
 
 {- | By the given file source content, returns parsed list of
 'Extension's, if parsing succeeds.
@@ -49,7 +80,7 @@ parseSource = parseSourceWithPath "SourceName"
 It parses language pragmas or comments until end of file or the first line with
 the function/import/module name.
 -}
-extensionsP :: Parser [OnOffExtension]
+extensionsP :: Parser [ParsedExtension]
 extensionsP = concat <$> manyTill
     (try singleExtensionsP <|> try commentP <|> try cppP)
     (eof <|> (() <$ manyTill endOfLine letter))
@@ -63,18 +94,18 @@ extensionsP = concat <$> manyTill
  #-}
 @
 -}
-singleExtensionsP :: Parser [OnOffExtension]
-singleExtensionsP = pragma (commaSep (tryCpp *> onOffExtensionP <* tryCpp) <* spaces)
+singleExtensionsP :: Parser [ParsedExtension]
+singleExtensionsP = pragma (commaSep (tryCpp *> extensionP <* tryCpp) <* spaces)
   where
     tryCpp :: Parser ()
     tryCpp = try (optional cppP)
 
--- | Parses all known 'Extension's.
-onOffExtensionP :: Parser OnOffExtension
-onOffExtensionP = (spaces *> many1 alphaNum <* spaces) >>= \txt ->
-    case readOnOffExtension txt of
-        Just ext -> pure ext
-        Nothing  -> unexpected $ "Unknown Extension: " <> txt
+-- | Parses all known and unknown 'Extension's.
+extensionP :: Parser ParsedExtension
+extensionP = (spaces *> many1 alphaNum <* spaces) >>= \txt ->
+    pure $ case readOnOffExtension txt of
+        Just ext -> KnownExtension ext
+        Nothing  -> UnknownExtension txt
 
 {- | Parser for standard pragma keywords: @{-# LANGUAGE XXX #-}@
 -}
