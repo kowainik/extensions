@@ -15,8 +15,9 @@ module Extensions.Parser
 
 import Data.Bifunctor (first)
 import Data.ByteString (ByteString)
+import Data.Char (toLower, toUpper)
 import Data.Either (partitionEithers)
-import Data.Foldable (asum)
+import Data.Foldable (asum, traverse_)
 import Data.List.NonEmpty (NonEmpty (..))
 import GHC.LanguageExtensions.Type (Extension (..))
 import Text.Parsec (alphaNum, between, char, eof, many, many1, manyTill, noneOf, oneOf, optional,
@@ -82,7 +83,7 @@ the function/import/module name.
 -}
 extensionsP :: Parser [ParsedExtension]
 extensionsP = concat <$> manyTill
-    (try singleExtensionsP <|> try commentP <|> try cppP)
+    (try singleExtensionsP <|> try optionsGhcP <|> try commentP <|> try cppP)
     (eof <|> (() <$ manyTill endOfLine letter))
 
 {- | Single LANGUAGE pragma parser.
@@ -95,7 +96,8 @@ extensionsP = concat <$> manyTill
 @
 -}
 singleExtensionsP :: Parser [ParsedExtension]
-singleExtensionsP = pragma (commaSep (nonExtP *> extensionP <* nonExtP) <* spaces)
+singleExtensionsP =
+    languagePragmaP (commaSep (nonExtP *> extensionP <* nonExtP) <* spaces)
   where
     nonExtP :: Parser ()
     nonExtP = optional $ try cppP <|> try commentP
@@ -107,24 +109,32 @@ extensionP = (spaces *> many1 alphaNum <* spaces) >>= \txt ->
         Just ext -> KnownExtension ext
         Nothing  -> UnknownExtension txt
 
-{- | Parser for standard pragma keywords: @{-# LANGUAGE XXX #-}@
+{- | Parser for standard language pragma keywords: @{-# LANGUAGE XXX #-}@
 -}
-pragma :: Parser a -> Parser a
-pragma p = between (string "{-#") (string "#-}" <* newLines)
-    (language *> p <* newLines)
+languagePragmaP :: Parser a -> Parser a
+languagePragmaP = pragmaP $ istringP "LANGUAGE"
+
+{- | Parser for GHC options pragma keywords: @{-# OPTIONS_GHC YYY #-}@
+-}
+optionsGhcP :: Parser [a]
+optionsGhcP = [] <$ optionsGhcPragmaP (many1 ghcOptionP)
   where
-    -- case insensitive word @LANGUAGE@.
-    language :: Parser ()
-    language = newLines
-        *> oneOf "lL"
-        *> oneOf "aA"
-        *> oneOf "nN"
-        *> oneOf "gG"
-        *> oneOf "uU"
-        *> oneOf "aA"
-        *> oneOf "gG"
-        *> oneOf "eE"
-        *> newLines
+    ghcOptionP :: Parser String
+    ghcOptionP = newLines *> many1 (alphaNum <|> char '-') <* newLines
+
+optionsGhcPragmaP :: Parser a -> Parser a
+optionsGhcPragmaP = pragmaP $ istringP "OPTIONS_GHC"
+
+-- | Parser for case-insensitive strings.
+istringP :: String -> Parser ()
+istringP = traverse_ $ \c -> oneOf [toUpper c, toLower c]
+
+{- | Parser for GHC pragmas with a given pragma word.
+-}
+pragmaP :: Parser () -> Parser a -> Parser a
+pragmaP pragmaNameP p = between
+    (string "{-#") (string "#-}" <* newLines)
+    (newLines *> pragmaNameP *> newLines *> p <* newLines)
 
 -- | Comma separated parser. Newlines and spaces are allowed around comma.
 commaSep :: Parser a -> Parser [a]

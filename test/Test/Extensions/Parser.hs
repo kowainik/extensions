@@ -19,6 +19,7 @@ parserSpec = describe "Haskell file Extensions Parser" $ do
     singleLineCommentsSpec
     multiLineCommentsSpec
     cppSpec
+    optionsGhcSpec
 
 failSpec :: Spec
 failSpec = describe "Expected test failures" $ do
@@ -235,6 +236,50 @@ cppSpec = describe "Parsing extensions with CPP" $ do
         , "LambdaCase  "
         , "#endif"
         , "#-}"
+        ])
+        [TypeApplications, LambdaCase]
+
+optionsGhcSpec :: Spec
+optionsGhcSpec = describe "Parsing LANGUAGE and OPTIONS_GHC pragmas" $ do
+    itShouldParse
+        "{-# OPTIONS_GHC -fno-warn-orphans #-}"
+        []
+    itShouldParse
+        "{-# options_ghc -freverse-errors #-}"
+        []
+    itShouldParse
+        "{-# OPTIONS_GHC -fno-warn-orphans -freverse-errors #-}"
+        []
+    itShouldParse (unlines
+        [ "{-# OPTIONS_GHC"
+        , " -fno-warn-orphans"
+        , " -freverse-errors "
+        , "#-}"
+        ])
+        []
+    itShouldParse (unlines
+        [ "{-# OPTIONS_GHC -fno-warn-orphans #-}"
+        , "{-# OPTIONS_GHC -freverse-errors #-}"
+        ])
+        []
+    itShouldParse (unlines
+        [ "{-# OPTIONS_GHC -fno-warn-orphans #-}"
+        , ""
+        , "{-# LANGUAGE LambdaCase #-}"
+        ])
+        [LambdaCase]
+    itShouldParse (unlines
+        [ "{-# OPTIONS_GHC -fno-warn-orphans #-}"
+        , ""
+        , "{-# LANGUAGE TypeApplications #-}"
+        , "{-# LANGUAGE LambdaCase #-}"
+        ])
+        [TypeApplications, LambdaCase]
+    itShouldParse (unlines
+        [ "{-# OPTIONS_GHC -fno-warn-orphans #-}"
+        , "{-# LANGUAGE TypeApplications #-}"
+        , "{-# OPTIONS_GHC -freverse-errors #-}"
+        , "{-# LANGUAGE LambdaCase #-}"
         ])
         [TypeApplications, LambdaCase]
 
