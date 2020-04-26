@@ -71,7 +71,7 @@ singleExtensionsP = pragma (commaSep (tryCpp *> extensionP <* tryCpp) <* spaces)
 -- | Parses all known 'Extension's.
 extensionP :: Parser Extension
 extensionP = (spaces *> many1 alphaNum <* spaces) >>= \txt ->
-    case readMaybe @Extension txt of
+    case readExtension txt of
         Just ext -> pure ext
         Nothing  -> unexpected $ "Unknown Extension: " <> txt
 
@@ -110,5 +110,16 @@ cppP = [] <$ many newline <* try (char '#' <* noneOf "-") <* manyTill anyChar (t
 -- | Any combination of spaces and newlines.
 newLines :: Parser ()
 newLines = () <$ many (space <|> endOfLine)
+
+{- | Parse 'Extension' from a string. 'Read' instance for 'Extension'
+doesn't always work since some extensions are named differently.
+-}
+readExtension :: String -> Maybe Extension
+readExtension = \case
+    "GeneralisedNewtypeDeriving" -> Just GeneralizedNewtypeDeriving
+    "NamedFieldPuns" -> Just RecordPuns
+    "Rank2Types" -> Just RankNTypes
+    "CPP" -> Just Cpp
+    s -> readMaybe s
 
 deriving stock instance Read Extension

@@ -184,8 +184,8 @@ toGhcExtension = \case
     Cabal.LiberalTypeSynonyms        -> Just LiberalTypeSynonyms
     Cabal.TypeOperators              -> Just TypeOperators
     Cabal.RecordWildCards            -> Just RecordWildCards
-    Cabal.RecordPuns                 -> Just NamedWildCards
-    Cabal.NamedFieldPuns             -> Just NamedWildCards
+    Cabal.RecordPuns                 -> Just RecordPuns
+    Cabal.NamedFieldPuns             -> Just RecordPuns
     Cabal.DisambiguateRecordFields   -> Just DisambiguateRecordFields
     Cabal.TraditionalRecordSyntax    -> Just TraditionalRecordSyntax
     Cabal.OverloadedStrings          -> Just OverloadedStrings
