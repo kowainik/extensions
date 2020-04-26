@@ -13,6 +13,7 @@ import Extensions.Parser (parseSource)
 parserSpec :: Spec
 parserSpec = describe "Haskell file Extensions Parser" $ do
     itShouldParse "{-# LANGUAGE TypeApplications #-}" [TypeApplications]
+    itShouldParse "{-# LaNgUaGe CPP #-}" [Cpp]
     itShouldParse "{-#language TypeApplications#-}" [TypeApplications]
     itShouldParse "{-# LANGUAGE TypeApplications, LambdaCase#-}" [TypeApplications, LambdaCase]
     itShouldParse "{-# LANGUAGE   TypeApplications  , LambdaCase   #-}" [TypeApplications, LambdaCase]
