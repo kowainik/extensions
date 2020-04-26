@@ -120,7 +120,7 @@ optionsGhcP :: Parser [a]
 optionsGhcP = [] <$ optionsGhcPragmaP (many1 ghcOptionP)
   where
     ghcOptionP :: Parser String
-    ghcOptionP = newLines *> (many1 $ alphaNum <|> char '-') <* newLines
+    ghcOptionP = newLines *> many1 (alphaNum <|> char '-') <* newLines
 
 optionsGhcPragmaP :: Parser a -> Parser a
 optionsGhcPragmaP = pragmaP $ istringP "OPTIONS_GHC"

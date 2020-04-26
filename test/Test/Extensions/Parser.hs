@@ -251,6 +251,13 @@ optionsGhcSpec = describe "Parsing LANGUAGE and OPTIONS_GHC pragmas" $ do
         "{-# OPTIONS_GHC -fno-warn-orphans -freverse-errors #-}"
         []
     itShouldParse (unlines
+        [ "{-# OPTIONS_GHC"
+        , " -fno-warn-orphans"
+        , " -freverse-errors "
+        , "#-}"
+        ])
+        []
+    itShouldParse (unlines
         [ "{-# OPTIONS_GHC -fno-warn-orphans #-}"
         , "{-# OPTIONS_GHC -freverse-errors #-}"
         ])
