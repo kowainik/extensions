@@ -25,7 +25,7 @@ import Data.Map.Merge.Strict (mapMissing, merge, zipWithMatched)
 import Data.Map.Strict (Map)
 import Data.Set (Set)
 
-import Extensions.Cabal (parseCabalExtensions)
+import Extensions.Cabal (parseCabalFileExtensions)
 import Extensions.OnOff (OnOffExtension, mergeExtensions)
 import Extensions.Parser (ParseError, parseFile, parseSourceWithPath)
 
@@ -41,7 +41,6 @@ data ExtensionsError
     = ModuleParseError FilePath ParseError
     -- | Parse error during cabal extensions parsing.
     | CabalParseError
-    | FileNotFound
     -- | File is in cabal file, but the source file is not provided where requested.
     | SourceNotFound FilePath
     -- | Source file is provided, but module is not in cabal file.
@@ -49,13 +48,17 @@ data ExtensionsError
     deriving stock (Show, Eq)
 
 {- | By given path to @.cabal@ file, analyse extensions for each Haskell module
-and return the corresponding 'HashMap'
+and return the corresponding 'HashMap'.
+
+__Throws__:
+
+* 'Extensions.Cabal.CabalException'
 -}
 getPackageExtentions
     :: FilePath  -- ^ Path to @.cabal@ file.
     -> IO (Map FilePath ExtensionsResult)
 getPackageExtentions cabalFile = do
-    cabalMap <- parseCabalExtensions cabalFile
+    cabalMap <- parseCabalFileExtensions cabalFile
     Map.traverseWithKey perModuleParseMerge cabalMap
   where
     perModuleParseMerge :: FilePath -> [OnOffExtension] -> IO ExtensionsResult
@@ -66,14 +69,18 @@ getPackageExtentions cabalFile = do
 
 {- | By given path to @.cabal@ file and 'Hashmap' of sources of all Haskell
 modules, analyse extensions for each Haskell module and return the corresponding
-'HashMap'
+'HashMap'.
+
+__Throws__:
+
+* 'Extensions.Cabal.CabalException'
 -}
 getPackageExtentionsBySources
     :: FilePath  -- ^ Path to @.cabal@ file.
     -> Map FilePath ByteString  -- ^ Path to modules with corresponding sources.
     -> IO (Map FilePath ExtensionsResult)
 getPackageExtentionsBySources cabalFile sourcesMap = do
-    cabalMap <- parseCabalExtensions cabalFile
+    cabalMap <- parseCabalFileExtensions cabalFile
     pure $ merge
         (mapMissing cabalNotSource) -- in cabal but not in sources
         (mapMissing sourceNotCabal) -- in sources but not in cabal
@@ -97,13 +104,17 @@ getPackageExtentionsBySources cabalFile sourcesMap = do
 
 {- | By given path to @.cabal@ file and path to Haskell module of the
 corresponding package, analyse and return extensions for the given module.
+
+__Throws__:
+
+* 'Extensions.Cabal.CabalException'
 -}
 getModuleExtentions
     :: FilePath  -- ^ Path to @.cabal@ file.
     -> FilePath  -- ^ Path to Haskell module file.
     -> IO ExtensionsResult
 getModuleExtentions cabalFile path = do
-    cabalMap <- parseCabalExtensions cabalFile
+    cabalMap <- parseCabalFileExtensions cabalFile
     case Map.lookup path cabalMap of
         Nothing -> pure $ Left $ NotCabalModule path
         Just cabalExts -> do
@@ -112,6 +123,10 @@ getModuleExtentions cabalFile path = do
 
 {- | By given path to @.cabal@ file and path to Haskell module of the
 corresponding package, analyse and return extensions for the given module.
+
+__Throws__:
+
+* 'Extensions.Cabal.CabalException'
 -}
 getModuleExtentionsBySource
     :: FilePath  -- ^ Maybe path to @.cabal@ file.
@@ -119,7 +134,7 @@ getModuleExtentionsBySource
     -> ByteString  -- ^ Source of a Haskell module file.
     -> IO ExtensionsResult
 getModuleExtentionsBySource cabalFile path source = do
-    cabalMap <- parseCabalExtensions cabalFile
+    cabalMap <- parseCabalFileExtensions cabalFile
     pure $ case Map.lookup path cabalMap of
         Nothing        -> Left $ NotCabalModule path
         Just cabalExts -> mergeCabalAndModule cabalExts path
