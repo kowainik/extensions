@@ -269,6 +269,10 @@ toGhcExtension = \case
     Cabal.StandaloneKindSignatures -> Just StandaloneKindSignatures
     Cabal.UnliftedNewtypes         -> Just UnliftedNewtypes
 #endif
+    -- GHC extensions, parsed by both Cabal and GHC, but don't have 'Extension' constructor
+    Cabal.Safe                   -> Nothing
+    Cabal.Trustworthy            -> Nothing
+    Cabal.Unsafe                 -> Nothing
     -- non-GHC extensions
     Cabal.Generics               -> Nothing
     Cabal.ExtensibleRecords      -> Nothing
@@ -278,7 +282,4 @@ toGhcExtension = \case
     Cabal.XmlSyntax              -> Nothing
     Cabal.RegularPatterns        -> Nothing
     Cabal.SafeImports            -> Nothing
-    Cabal.Safe                   -> Nothing
-    Cabal.Trustworthy            -> Nothing
-    Cabal.Unsafe                 -> Nothing
     Cabal.NewQualifiedOperators  -> Nothing
