@@ -5,9 +5,9 @@ module Test.Extensions.Cabal
 
 import Data.Map.Strict (Map)
 import GHC.LanguageExtensions.Type (Extension (..))
-import Test.Hspec (Spec, describe, it, shouldBe)
+import Test.Hspec (Spec, describe, it, shouldBe, shouldThrow)
 
-import Extensions.Cabal (parseCabalExtensions)
+import Extensions.Cabal (CabalException (..), parseCabalExtensions, parseCabalFileExtensions)
 import Extensions.OnOff (OnOffExtension (..))
 
 import qualified Data.Map.Strict as Map
@@ -15,8 +15,15 @@ import qualified Data.Map.Strict as Map
 
 cabalSpec :: Spec
 cabalSpec = describe "Cabal file Extensions Parser" $ do
+    it "should throw 'CabalFileNotFound' on non-existing file" $
+        parseCabalFileExtensions "xno-extensions.cabal" `shouldThrow`
+            (== CabalFileNotFound "xno-extensions.cabal")
+    it "should throw parse error" $
+        parseCabalExtensions "stack.yaml" `shouldThrow`
+            (== CabalParseError)
     it "should parse project Cabal file" $
-        parseCabalExtensions "extensions.cabal" >>= \extMap -> extMap `shouldBe` expectedMap
+        parseCabalFileExtensions "extensions.cabal" >>= \extMap ->
+            extMap `shouldBe` expectedMap
   where
     expectedMap :: Map FilePath [OnOffExtension]
     expectedMap = Map.fromList

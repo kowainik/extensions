@@ -1,4 +1,5 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE CPP            #-}
+{-# LANGUAGE DeriveAnyClass #-}
 
 {- |
 Copyright: (c) 2020 Kowainik
@@ -9,14 +10,18 @@ Functions to extract extensions from the @.cabal@ files.
 -}
 
 module Extensions.Cabal
-    ( parseCabalExtensions
+    ( CabalException (..)
+    , parseCabalFileExtensions
+    , parseCabalExtensions
     , extractCabalExtensions
     ) where
 
+import Control.Exception (Exception, throwIO)
+import Data.ByteString (ByteString)
 import Data.Map.Strict (Map)
 import Data.Maybe (mapMaybe)
 import Distribution.ModuleName (ModuleName (..), toFilePath)
-import Distribution.PackageDescription.Parsec (readGenericPackageDescription)
+import Distribution.PackageDescription.Parsec (parseGenericPackageDescriptionMaybe)
 import Distribution.Types.Benchmark (Benchmark (..))
 import Distribution.Types.BenchmarkInterface (BenchmarkInterface (..))
 import Distribution.Types.BuildInfo (BuildInfo (..))
@@ -27,25 +32,50 @@ import Distribution.Types.GenericPackageDescription (GenericPackageDescription (
 import Distribution.Types.Library (Library (..))
 import Distribution.Types.TestSuite (TestSuite (..))
 import Distribution.Types.TestSuiteInterface (TestSuiteInterface (..))
-import Distribution.Verbosity (normal)
 import GHC.LanguageExtensions.Type (Extension (..))
 import System.Directory (doesFileExist)
 import System.FilePath ((<.>), (</>))
 
 import Extensions.OnOff (OnOffExtension (..))
 
+import qualified Data.ByteString as ByteString
 import qualified Data.Map.Strict as Map
 import qualified Language.Haskell.Extension as Cabal
 
 
+{- | Exception that gets thrown when working with @.cabal@ files.
+-}
+data CabalException
+    -- | The @.cabal@ file is not found.
+    = CabalFileNotFound FilePath
+    -- | Parsing errors in the @.cabal@ file.
+    | CabalParseError
+    deriving stock (Show, Eq)
+    deriving anyclass (Exception)
 
 {- | Parse default extensions from a @.cabal@ file under given
 'FilePath'.
+
+__Throws__:
+
+* 'CabalException'
 -}
-parseCabalExtensions :: FilePath -> IO (Map FilePath [OnOffExtension])
-parseCabalExtensions cabalPath = do
-    pkgDesc <- readGenericPackageDescription normal cabalPath
-    extractCabalExtensions pkgDesc
+parseCabalFileExtensions :: FilePath -> IO (Map FilePath [OnOffExtension])
+parseCabalFileExtensions cabalPath = doesFileExist cabalPath >>= \hasCabalFile ->
+    if hasCabalFile
+    then ByteString.readFile cabalPath >>= parseCabalExtensions
+    else throwIO $ CabalFileNotFound cabalPath
+
+{- | Parse default extensions from a @.cabal@ file content.
+
+__Throws__:
+
+* 'CabalException'
+-}
+parseCabalExtensions :: ByteString -> IO (Map FilePath [OnOffExtension])
+parseCabalExtensions cabal = case parseGenericPackageDescriptionMaybe cabal of
+    Nothing      -> throwIO CabalParseError
+    Just pkgDesc -> extractCabalExtensions pkgDesc
 
 {- | Extract Haskell Language extensions from a Cabal package
 description.
