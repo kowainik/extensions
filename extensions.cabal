@@ -80,6 +80,7 @@ test-suite extensions-test
                        Test.Extensions.OnOff
                        Test.Extensions.Parser
   build-depends:       extensions
+                     , bytestring
                      , containers
                      , ghc-boot-th
                      , hspec

@@ -60,6 +60,7 @@ getPackageExtentions cabalFile = do
   where
     perModuleParseMerge :: FilePath -> [OnOffExtension] -> IO ExtensionsResult
     perModuleParseMerge path cabalExts = do
+        -- TODO: catch and return SourceNotFound
         moduleRes <- parseFile path
         pure $ mergeCabalAndModule cabalExts path moduleRes
 
