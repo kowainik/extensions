@@ -18,7 +18,9 @@ import Data.ByteString (ByteString)
 import Data.Char (toLower, toUpper)
 import Data.Either (partitionEithers)
 import Data.Foldable (asum, traverse_)
+import Data.Functor ((<&>))
 import Data.List.NonEmpty (NonEmpty (..))
+import Data.Maybe (catMaybes)
 import GHC.LanguageExtensions.Type (Extension (..))
 import Text.Parsec (alphaNum, between, char, eof, many, many1, manyTill, noneOf, oneOf, parse,
                     sepBy1, try, (<|>))
@@ -97,15 +99,21 @@ extensionsP = concat <$> manyTill
 -}
 singleExtensionsP :: Parser [ParsedExtension]
 singleExtensionsP =
+    catMaybes <$>
     languagePragmaP (commaSep (nonExtP *> extensionP <* nonExtP) <* spaces)
   where
     nonExtP :: Parser ()
     nonExtP = () <$ many (try cppP <|> try commentP)
 
--- | Parses all known and unknown 'Extension's.
-extensionP :: Parser ParsedExtension
-extensionP = (spaces *> many1 alphaNum <* spaces) >>= \txt ->
-    pure $ case readOnOffExtension txt of
+{- | Parses all known and unknown 'Extension's. Returns 'Nothing' for
+extensions, not represented as 'Extension' constructors, but still
+specified with the @LANGUAGE@ pragma.
+-}
+extensionP :: Parser (Maybe ParsedExtension)
+extensionP = (spaces *> many1 alphaNum <* spaces) <&> \txt ->
+    if isNotExtension txt
+    then Nothing
+    else Just $ case readOnOffExtension txt of
         Just ext -> KnownExtension ext
         Nothing  -> UnknownExtension txt
 
@@ -159,6 +167,13 @@ cppP = [] <$ many newline <* try (char '#' <* noneOf "-") <* manyTill anyChar (t
 -- | Any combination of spaces and newlines.
 newLines :: Parser ()
 newLines = () <$ many (space <|> endOfLine)
+
+isNotExtension :: String -> Bool
+isNotExtension = \case
+    "Safe"        -> True
+    "Unsafe"      -> True
+    "Trustworthy" -> True
+    _             -> False
 
 readOnOffExtension :: String -> Maybe OnOffExtension
 readOnOffExtension s = asum

@@ -44,16 +44,21 @@ onlyExtensionsSpec = describe "Parsing only extensions without anything else" $ 
     itShouldParse "{-#language TypeApplications#-}" [TypeApplications]
     itShouldParse "{-# LANGUAGE TypeApplications, LambdaCase#-}" [TypeApplications, LambdaCase]
     itShouldParse "{-# LANGUAGE   TypeApplications  , LambdaCase   #-}" [TypeApplications, LambdaCase]
-    itShouldParse ( unlines
+    itShouldParse (unlines
         [ "{-# LANGUAGE TypeApplications #-}"
         , "{-# LANGUAGE LambdaCase #-}"
-        ] )
+        ])
         [TypeApplications, LambdaCase]
-    itShouldParse ( unlines
+    itShouldParse (unlines
         [ "{-# LANGUAGE GeneralizedNewtypeDeriving #-}"
         , "{-# LANGUAGE GeneralisedNewtypeDeriving #-}"
-        ] )
+        ])
         [GeneralizedNewtypeDeriving, GeneralizedNewtypeDeriving]
+    itShouldParse (unlines
+        [ "{-# LANGUAGE Safe #-}"
+        , "{-# LANGUAGE Trustworthy, Unsafe #-}"
+        ])
+        []
     itShouldParse (unlines
         [ "{-# LANGUAGE"
         , " TypeApplications,"
