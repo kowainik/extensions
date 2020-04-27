@@ -20,8 +20,8 @@ import Data.Either (partitionEithers)
 import Data.Foldable (asum, traverse_)
 import Data.List.NonEmpty (NonEmpty (..))
 import GHC.LanguageExtensions.Type (Extension (..))
-import Text.Parsec (alphaNum, between, char, eof, many, many1, manyTill, noneOf, oneOf, optional,
-                    parse, sepBy1, try, (<|>))
+import Text.Parsec (alphaNum, between, char, eof, many, many1, manyTill, noneOf, oneOf, parse,
+                    sepBy1, try, (<|>))
 import Text.Parsec.ByteString (Parser)
 import Text.Parsec.Char (anyChar, endOfLine, letter, newline, space, spaces, string)
 import Text.Read (readMaybe)
@@ -100,7 +100,7 @@ singleExtensionsP =
     languagePragmaP (commaSep (nonExtP *> extensionP <* nonExtP) <* spaces)
   where
     nonExtP :: Parser ()
-    nonExtP = optional $ try cppP <|> try commentP
+    nonExtP = () <$ many (try cppP <|> try commentP)
 
 -- | Parses all known and unknown 'Extension's.
 extensionP :: Parser ParsedExtension
@@ -147,7 +147,7 @@ commentP = newLines *> (try singleLineCommentP <|> try multiLineCommentP) <* new
   where
     singleLineCommentP :: Parser [a]
     singleLineCommentP = [] <$
-        (string "--" *> manyTill anyChar (try endOfLine))
+        (string "--" *> manyTill anyChar (try (() <$ endOfLine) <|> eof))
 
     multiLineCommentP :: Parser [a]
     multiLineCommentP = [] <$

@@ -20,6 +20,7 @@ parserSpec = describe "Haskell file Extensions Parser" $ do
     multiLineCommentsSpec
     cppSpec
     optionsGhcSpec
+    mixSpec
 
 failSpec :: Spec
 failSpec = describe "Expected test failures" $ do
@@ -81,11 +82,21 @@ singleLineCommentsSpec = describe "Parsing extensions with single-line comments"
         , "-- hello "
         ])
         [LambdaCase]
+    itShouldParse
+        "{-# LANGUAGE LambdaCase #-} -- this is extension for \\case"
+        [LambdaCase]
     itShouldParse (unlines
         [ "-- For better syntax"
         , "{-# LANGUAGE LambdaCase #-}"
         , "-- For explicit type annotations"
         , "{-# LANGUAGE TypeApplications #-}"
+        ])
+        [LambdaCase, TypeApplications]
+    itShouldParse (unlines
+        [ "-- For better syntax"
+        , "{-# LANGUAGE LambdaCase #-} -- this is extension for \\case  "
+        , "-- For explicit type annotations"
+        , "{-# LANGUAGE TypeApplications #-}  -- this is extension for @Int"
         ])
         [LambdaCase, TypeApplications]
     itShouldParse (unlines
@@ -145,6 +156,9 @@ multiLineCommentsSpec = describe "Parsing extensions with multi-line comments" $
         , "{-# LANGUAGE LambdaCase #-}"
         ])
         [TypeApplications, LambdaCase]
+    itShouldParse
+        "{-# LANGUAGE LambdaCase #-} {- hello -}"
+        [LambdaCase]
     itShouldParse (unlines
         [ "{-# LANGUAGE TypeApplications #-}"
         , "  "
@@ -161,6 +175,12 @@ multiLineCommentsSpec = describe "Parsing extensions with multi-line comments" $
         , "multiline"
         , "comment"
         , "-}"
+        , "{-# LANGUAGE LambdaCase #-}"
+        ])
+        [TypeApplications, LambdaCase]
+    itShouldParse (unlines
+        [ "{-# LANGUAGE TypeApplications #-} {- Long comment"
+        , "explaining why this extension is required -}"
         , "{-# LANGUAGE LambdaCase #-}"
         ])
         [TypeApplications, LambdaCase]
@@ -280,6 +300,64 @@ optionsGhcSpec = describe "Parsing LANGUAGE and OPTIONS_GHC pragmas" $ do
         , "{-# LANGUAGE TypeApplications #-}"
         , "{-# OPTIONS_GHC -freverse-errors #-}"
         , "{-# LANGUAGE LambdaCase #-}"
+        ])
+        [TypeApplications, LambdaCase]
+
+mixSpec :: Spec
+mixSpec = describe "Parsing combinations of different parts" $ do
+    itShouldParse (unlines
+        [ "{-# LANGUAGE TypeApplications, LambdaCase #-}"
+        , "{-# language CPP #-}"
+        , "{-# LANGUAGE"
+        , "  DerivingVia,"
+        , "  DerivingStrategies"
+        , "#-}"
+        ])
+        [TypeApplications, LambdaCase, Cpp, DerivingVia, DerivingStrategies]
+    itShouldParse (unlines
+        [ "-- first language extension"
+        , "{-# LANGUAGE TypeApplications #-} {- this is type applications -}"
+        , "{- This is nice syntax for \\case instead of"
+        , "   case mx of"
+        , "       Nothing -> ..."
+        , "       Just x  -> ... -}"
+        , "{-# LANGUAGE LambdaCase {- CASE -} #-}"
+        , "  -- That's all folks!"
+        , ""
+        , "main :: IO ()"
+        , "main = putStrLn \"LANGUAGE\""
+        ])
+        [TypeApplications, LambdaCase]
+    itShouldParse (unlines
+        [ "-- this is super new extension"
+        , "#if __GLASGOW_HASKELL__ < 810"
+        , "{-# LANGUAGE TypeApplications #-}"
+        , "-- for old GHC versions we can use another one"
+        , "#else"
+        , "-- or maybe not..."
+        , "{-# LANGUAGE LambdaCase #-}"
+        , "-- YES!"
+        , "#endif"
+        , "{- We can also always use strategies -}"
+        , "{-# LANGUAGE DerivingStrategies #-}"
+        ])
+        [TypeApplications, LambdaCase, DerivingStrategies]
+    itShouldParse (unlines
+        [ "{-# LANGUAGE"
+        , "-- this is really weird?"
+        , "#if WHAT_IS THIS_SYNTAX o_O"
+        , "  {- or is it?.. -}"
+        , "  TypeApplications,"
+        , "  {- YES! Nobody should write"
+        , "     such language pragmas!"
+        , "  -}"
+        , "#else"
+        , "  -- this is fine though"
+        , "  -- i said, this is fine"
+        , "  LambdaCase"
+        , "#endif"
+        , "-- innocent comment at the end"
+        , "#-}"
         ])
         [TypeApplications, LambdaCase]
 
