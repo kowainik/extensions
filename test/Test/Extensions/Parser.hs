@@ -9,7 +9,7 @@ import GHC.LanguageExtensions.Type (Extension (..))
 import Test.Hspec (Arg, Expectation, Spec, SpecWith, describe, it, shouldBe)
 
 import Extensions.OnOff (OnOffExtension (..))
-import Extensions.Parser (ParseError (..), parseSource)
+import Extensions.Parser (ParseError (..), parseFile, parseSource)
 
 
 parserSpec :: Spec
@@ -24,6 +24,9 @@ parserSpec = describe "Haskell file Extensions Parser" $ do
 
 failSpec :: Spec
 failSpec = describe "Expected test failures" $ do
+    it "should throw FileNotFound" $
+        parseFile "Java.hs" >>= \res ->
+            res `shouldBe` Left (FileNotFound "Java.hs")
     itShouldFail
         "{-# LANGUAGE DependentTypes #-}"
         (UnknownExtensions $ "DependentTypes" :| [])
