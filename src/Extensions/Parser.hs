@@ -22,6 +22,7 @@ import Data.Functor ((<&>))
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Maybe (catMaybes)
 import GHC.LanguageExtensions.Type (Extension (..))
+import System.Directory (doesFileExist)
 import Text.Parsec (alphaNum, between, char, eof, many, many1, manyTill, noneOf, oneOf, parse,
                     sepBy1, try, (<|>))
 import Text.Parsec.ByteString (Parser)
@@ -39,6 +40,8 @@ data ParseError
     = ParsecError Parsec.ParseError
     -- | Uknown extensions were used in the module.
     | UnknownExtensions (NonEmpty String)
+    -- | Module file not found.
+    | FileNotFound FilePath
     deriving stock (Show, Eq)
 
 -- | Internal data type for known and unknown extensions.
@@ -62,7 +65,10 @@ handleParsedExtensions = handleResult . partitionEithers . map toEither
 'Extension's, if parsing succeeds.
 -}
 parseFile :: FilePath -> IO (Either ParseError [OnOffExtension])
-parseFile file = parseSourceWithPath file <$> BS.readFile file
+parseFile file = doesFileExist file >>= \hasFile ->
+    if hasFile
+    then parseSourceWithPath file <$> BS.readFile file
+    else pure $ Left $ FileNotFound file
 
 {- | By the given file path and file source content, returns parsed list of
 'Extension's, if parsing succeeds.
