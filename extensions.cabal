@@ -70,6 +70,20 @@ library
                      , ghc-boot-th ^>= 8.8.1
                      , parsec ^>= 3.1
 
+executable extensions
+  import:              common-options
+  hs-source-dirs:      app
+  main-is:             Main.hs
+  other-modules:       Cli
+  build-depends:       extensions
+                     , base
+                     , colourista ^>= 0.0.0.0
+                     , containers
+                     , directory
+                     , filepath
+                     , optparse-applicative ^>= 0.15
+                     , text
+
 test-suite extensions-test
   import:              common-options
   type:                exitcode-stdio-1.0
