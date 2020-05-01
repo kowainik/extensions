@@ -27,7 +27,9 @@ cabalSpec = describe "Cabal file Extensions Parser" $ do
   where
     expectedMap :: Map FilePath [OnOffExtension]
     expectedMap = Map.fromList
-        [ "src/Extensions.hs"              `to` defaultExtensions
+        [ "app/Cli.hs"                     `to` defaultExtensions
+        , "app/Main.hs"                    `to` defaultExtensions
+        , "src/Extensions.hs"              `to` defaultExtensions
         , "src/Extensions/Cabal.hs"        `to` defaultExtensions
         , "src/Extensions/OnOff.hs"        `to` defaultExtensions
         , "src/Extensions/Parser.hs"       `to` defaultExtensions
