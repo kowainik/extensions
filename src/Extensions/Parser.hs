@@ -17,19 +17,17 @@ import Data.Bifunctor (first)
 import Data.ByteString (ByteString)
 import Data.Char (toLower, toUpper)
 import Data.Either (partitionEithers)
-import Data.Foldable (asum, traverse_)
+import Data.Foldable (traverse_)
 import Data.Functor ((<&>))
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Maybe (catMaybes)
-import GHC.LanguageExtensions.Type (Extension (..))
 import System.Directory (doesFileExist)
 import Text.Parsec (alphaNum, between, char, eof, many, many1, manyTill, noneOf, oneOf, parse,
                     sepBy1, try, (<|>))
 import Text.Parsec.ByteString (Parser)
 import Text.Parsec.Char (anyChar, endOfLine, letter, newline, space, spaces, string)
-import Text.Read (readMaybe)
 
-import Extensions.OnOff (OnOffExtension (..))
+import Extensions.OnOff (OnOffExtension (..), readOnOffExtension)
 
 import qualified Data.ByteString as BS
 import qualified Text.Parsec as Parsec
@@ -180,28 +178,3 @@ isNotExtension = \case
     "Unsafe"      -> True
     "Trustworthy" -> True
     _             -> False
-
-readOnOffExtension :: String -> Maybe OnOffExtension
-readOnOffExtension s = asum
-    [ On  <$> readOnExtension s
-    , Off <$> readOffExtension
-    ]
-  where
-    readOffExtension :: Maybe Extension
-    readOffExtension = do
-        ("No", ext) <- Just $ splitAt 2 s
-        readOnExtension ext
-
-
-{- | Parse 'Extension' from a string. 'Read' instance for 'Extension'
-doesn't always work since some extensions are named differently.
--}
-readOnExtension :: String -> Maybe Extension
-readOnExtension = \case
-    "GeneralisedNewtypeDeriving" -> Just GeneralizedNewtypeDeriving
-    "NamedFieldPuns" -> Just RecordPuns
-    "RecordPuns" -> Nothing
-    "Rank2Types" -> Just RankNTypes
-    "CPP" -> Just Cpp
-    "Cpp" -> Nothing
-    s -> readMaybe s

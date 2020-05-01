@@ -3,15 +3,25 @@ module Test.Extensions.OnOff
     ) where
 
 import GHC.LanguageExtensions.Type (Extension (..))
+import Hedgehog (Gen, PropertyT, forAll, tripping)
 import Test.Hspec (Expectation, Spec, describe, it, shouldBe)
+import Test.Hspec.Hedgehog (hedgehog)
 
-import Extensions.OnOff (OnOffExtension (..), mergeExtensions)
+import Extensions.OnOff (OnOffExtension (..), mergeExtensions, readOnOffExtension,
+                         showOnOffExtension)
 
 import qualified Data.Set as Set
+import qualified Data.Text as Text
+import qualified Hedgehog.Gen as Gen
 
 
 onOffSpec :: Spec
 onOffSpec = describe "OnOffExtension tests" $ do
+    mergeSpec
+    propertiesSpec
+
+mergeSpec :: Spec
+mergeSpec = describe "Merging on-off extensions" $ do
     it "should enable non default ext" $
         checkMerge [On LambdaCase] [On LambdaCase]
     it "should not add default ext" $
@@ -31,3 +41,24 @@ onOffSpec = describe "OnOffExtension tests" $ do
   where
     checkMerge :: [OnOffExtension] -> [OnOffExtension] -> Expectation
     checkMerge exts res = mergeExtensions exts `shouldBe` Set.fromList res
+
+propertiesSpec :: Spec
+propertiesSpec = describe "Property tests" $
+    it "read . show ≡ Just" roundtripProperty
+
+roundtripProperty :: PropertyT IO ()
+roundtripProperty = hedgehog $ do
+    onOffExtension <- forAll genOnOffExtension
+    tripping
+        onOffExtension
+        showOnOffExtension
+        (readOnOffExtension . Text.unpack)
+
+genOnOffExtension :: Gen OnOffExtension
+genOnOffExtension = Gen.choice
+    [ On  <$> genExtension
+    , Off <$> genExtension
+    ]
+  where
+    genExtension :: Gen Extension
+    genExtension = Gen.enumBounded

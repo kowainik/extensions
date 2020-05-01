@@ -98,7 +98,9 @@ test-suite extensions-test
                      , bytestring
                      , containers
                      , ghc-boot-th
+                     , hedgehog ^>= 1.0
                      , hspec
+                     , hspec-hedgehog ^>= 0.0.1
                      , text ^>= 1.2
   ghc-options:         -threaded
                        -rtsopts
