@@ -42,19 +42,18 @@ extensionsP = do
     extensionsArgsNoModules      <- noModulesP
     pure ExtensionsArgs{..}
 
-moduleFilePathP :: Parser (Maybe FilePath)
-moduleFilePathP = optional $ strOption $ mconcat
-    [ long "module-file-path"
+filePathP :: String -> String -> Parser (Maybe FilePath)
+filePathP opt desc = optional $ strOption $ mconcat
+    [ long opt
     , metavar "FILE_PATH"
-    , help "Relative path to the Haskell module"
+    , help ("Relative path to the " <> desc)
     ]
+    
+moduleFilePathP :: Parser (Maybe FilePath)
+moduleFilePathP = filePathP "module-file-path" "Haskell module"
 
 cabalFilePathP :: Parser (Maybe FilePath)
-cabalFilePathP = optional $ strOption $ mconcat
-    [ long "cabal-file-path"
-    , metavar "FILE_PATH"
-    , help "Relative path to the .cabal file"
-    ]
+cabalFilePathP = filePathP "cabal-file-path" ".cabal file"
 
 noCabalP :: Parser Bool
 noCabalP = switch $ mconcat
