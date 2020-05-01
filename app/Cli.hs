@@ -10,20 +10,29 @@ CLI options for the @extensions@ exectuable.
 
 module Cli
     ( ExtensionsArgs (..)
+    , Toggle (..)
     , runExtensionsCli
     ) where
 
-import Options.Applicative (Parser, ParserInfo, execParser, fullDesc, help, helper, info, long,
-                            metavar, optional, progDesc, strOption, switch)
+import Options.Applicative (Parser, ParserInfo, execParser, flag, fullDesc, help, helper, info,
+                            long, metavar, optional, progDesc, strOption)
 
 
 -- | Options used for the main @extensions@ executable.
 data ExtensionsArgs = ExtensionsArgs
-    { extensionsArgsModuleFilePath :: !(Maybe FilePath)  -- ^ Path to module
-    , extensionsArgsCabalFilePath  :: !(Maybe FilePath)  -- ^ Path to cabal file
-    , extensionsArgsNoCabal        :: !Bool  -- ^ Do not fail if no @.cabal@ file
-    , extensionsArgsNoModules      :: !Bool  -- ^ Do not print per-module info
+    { -- | Path to cabal file
+      extensionsArgsCabalFilePath  :: !(Maybe FilePath)
+      -- | Path to module
+    , extensionsArgsModuleFilePath :: !(Maybe FilePath)
+      -- | When 'Disabled', do not check extensions in @.cabal@ file
+    , extensionsArgsCabalToggle    :: !Toggle
+      -- | When 'Disabled', print only @.cabal@ file's @default-extensions@
+    , extensionsArgsModulesToggle  :: !Toggle
     }
+
+data Toggle
+    = Disabled
+    | Enabled
 
 -- | Run main parser of the @extensions@ command line tool.
 runExtensionsCli :: IO ExtensionsArgs
@@ -36,33 +45,27 @@ extensionsCliParser = info (helper <*> extensionsP) $
 -- | @extensions@ command parser.
 extensionsP :: Parser ExtensionsArgs
 extensionsP = do
-    extensionsArgsModuleFilePath <- moduleFilePathP
-    extensionsArgsCabalFilePath  <- cabalFilePathP
-    extensionsArgsNoCabal        <- noCabalP
-    extensionsArgsNoModules      <- noModulesP
+    extensionsArgsCabalFilePath  <- filePathP "cabal" ".cabal file"
+    extensionsArgsModuleFilePath <- filePathP "module" "Haskell module"
+    extensionsArgsCabalToggle    <- noCabalP
+    extensionsArgsModulesToggle  <- noModulesP
     pure ExtensionsArgs{..}
 
 filePathP :: String -> String -> Parser (Maybe FilePath)
 filePathP opt desc = optional $ strOption $ mconcat
-    [ long opt
+    [ long $ opt <> "-file-path"
     , metavar "FILE_PATH"
-    , help ("Relative path to the " <> desc)
+    , help $ "Relative path to the " <> desc
     ]
-    
-moduleFilePathP :: Parser (Maybe FilePath)
-moduleFilePathP = filePathP "module-file-path" "Haskell module"
 
-cabalFilePathP :: Parser (Maybe FilePath)
-cabalFilePathP = filePathP "cabal-file-path" ".cabal file"
-
-noCabalP :: Parser Bool
-noCabalP = switch $ mconcat
+noCabalP :: Parser Toggle
+noCabalP = flag Enabled Disabled $ mconcat
     [ long "no-cabal"
-    , help "Do not fail when no .cabal file found"
+    , help "Do not check extensions in the .cabal file"
     ]
 
-noModulesP :: Parser Bool
-noModulesP = switch $ mconcat
+noModulesP :: Parser Toggle
+noModulesP = flag Enabled Disabled $ mconcat
     [ long "no-modules"
-    , help "Do not pring per-module info when printing extension from the .cabal file"
+    , help "Print only .cabal file's 'default-extensions'"
     ]

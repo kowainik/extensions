@@ -10,15 +10,18 @@ Data types and functions to work with enabled/disabled 'Extension's.
 
 module Extensions.OnOff
     ( OnOffExtension (..)
+    , showOnOffExtension
     , mergeExtensions
     , default2010Extensions
     ) where
 
 import Data.Foldable (foldl')
 import Data.Set (Set)
+import Data.Text (Text)
 import GHC.LanguageExtensions.Type (Extension (..))
 
 import qualified Data.Set as Set
+import qualified Data.Text as Text
 
 
 -- | Represents enabled/disabled extensions.
@@ -27,6 +30,17 @@ data OnOffExtension
     | Off Extension
     deriving stock (Show, Eq, Ord)
 
+-- | Display 'OnOffExtension' as GHC recognizes it.
+showOnOffExtension :: OnOffExtension -> Text
+showOnOffExtension = \case
+    On ext  -> showExtension ext
+    Off ext -> "No" <> showExtension ext
+  where
+    showExtension :: Extension -> Text
+    showExtension = \case
+        Cpp        -> "CPP"
+        RecordPuns -> "NamedFieldPuns"
+        ext        -> Text.pack $ show ext
 
 {- | Take accumulated 'OnOffExtension's, and merge them into one 'Set',
 excluding enabling of 'default2010Extensions'.
