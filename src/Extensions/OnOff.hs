@@ -11,14 +11,18 @@ Data types and functions to work with enabled/disabled 'Extension's.
 module Extensions.OnOff
     ( OnOffExtension (..)
     , showOnOffExtension
+    , readOnOffExtension
+    , readExtension
     , mergeExtensions
     , default2010Extensions
     ) where
 
+import Control.Applicative ((<|>))
 import Data.Foldable (foldl')
 import Data.Set (Set)
 import Data.Text (Text)
 import GHC.LanguageExtensions.Type (Extension (..))
+import Text.Read (readMaybe)
 
 import qualified Data.Set as Set
 import qualified Data.Text as Text
@@ -41,6 +45,30 @@ showOnOffExtension = \case
         Cpp        -> "CPP"
         RecordPuns -> "NamedFieldPuns"
         ext        -> Text.pack $ show ext
+
+{- | Parse 'OnOffextension' from a string that specifies extension.
+-}
+readOnOffExtension :: String -> Maybe OnOffExtension
+readOnOffExtension s =
+    (On <$> readExtension s) <|> (Off <$> readOffExtension)
+  where
+    readOffExtension :: Maybe Extension
+    readOffExtension = do
+        ("No", ext) <- Just $ splitAt 2 s
+        readExtension ext
+
+{- | Parse 'Extension' from a string. 'Read' instance for 'Extension'
+doesn't always work since some extensions are named differently.
+-}
+readExtension :: String -> Maybe Extension
+readExtension = \case
+    "GeneralisedNewtypeDeriving" -> Just GeneralizedNewtypeDeriving
+    "NamedFieldPuns" -> Just RecordPuns
+    "RecordPuns" -> Nothing
+    "Rank2Types" -> Just RankNTypes
+    "CPP" -> Just Cpp
+    "Cpp" -> Nothing
+    s -> readMaybe s
 
 {- | Take accumulated 'OnOffExtension's, and merge them into one 'Set',
 excluding enabling of 'default2010Extensions'.
