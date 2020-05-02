@@ -22,6 +22,7 @@ module Extensions
 
 import Control.Exception (catch)
 import Data.ByteString (ByteString)
+import Data.Functor ((<&>))
 import Data.Map.Merge.Strict (mapMissing, merge, zipWithMatched)
 import Data.Map.Strict (Map)
 import Data.Set (Set)
@@ -75,10 +76,9 @@ getPackageExtentionsBySources
     :: FilePath  -- ^ Path to @.cabal@ file.
     -> Map FilePath ByteString  -- ^ Path to modules with corresponding sources.
     -> IO (Map FilePath ExtensionsResult)
-getPackageExtentionsBySources cabalFile sourcesMap = do
-    cabalRes <- parseCabalHandleException cabalFile
-    pure $ case cabalRes of
-        Left err -> Map.map (const err) sourcesMap
+getPackageExtentionsBySources cabalFile sourcesMap =
+    parseCabalHandleException cabalFile <&> \case
+        Left err -> err <$ sourcesMap
         Right cabalMap -> merge
             (mapMissing cabalNotSource) -- in cabal but not in sources
             (mapMissing sourceNotCabal) -- in sources but not in cabal
@@ -107,9 +107,8 @@ getModuleExtentions
     :: FilePath  -- ^ Path to @.cabal@ file.
     -> FilePath  -- ^ Path to Haskell module file.
     -> IO ExtensionsResult
-getModuleExtentions cabalFile path = do
-    cabalRes <- parseCabalHandleException cabalFile
-    case cabalRes of
+getModuleExtentions cabalFile path =
+    parseCabalHandleException cabalFile >>= \case
         Left err -> pure err
         Right cabalMap -> case Map.lookup path cabalMap of
             Nothing -> pure $ Left $ NotCabalModule path
@@ -125,9 +124,8 @@ getModuleExtentionsBySource
     -> FilePath  -- ^ Path to the module's source (needed for matching with cabal file).
     -> ByteString  -- ^ Source of a Haskell module file.
     -> IO ExtensionsResult
-getModuleExtentionsBySource cabalFile path source = do
-    cabalRes <- parseCabalHandleException cabalFile
-    pure $ case cabalRes of
+getModuleExtentionsBySource cabalFile path source =
+    parseCabalHandleException cabalFile <&> \case
         Left cabalError -> cabalError
         Right cabalMap -> case Map.lookup path cabalMap of
             Nothing        -> Left $ NotCabalModule path
