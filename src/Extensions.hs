@@ -20,12 +20,13 @@ module Extensions
        , getModuleExtentionsBySource
        ) where
 
+import Control.Exception (catch)
 import Data.ByteString (ByteString)
 import Data.Map.Merge.Strict (mapMissing, merge, zipWithMatched)
 import Data.Map.Strict (Map)
 import Data.Set (Set)
 
-import Extensions.Cabal (parseCabalFileExtensions)
+import Extensions.Cabal (CabalException, parseCabalFileExtensions)
 import Extensions.OnOff (OnOffExtension, mergeExtensions)
 import Extensions.Parser (ParseError, parseFile, parseSourceWithPath)
 
@@ -39,8 +40,8 @@ type ExtensionsResult = Either ExtensionsError (Set OnOffExtension)
 data ExtensionsError
     -- | Parse error during module extensions parsing.
     = ModuleParseError FilePath ParseError
-    -- | Parse error during cabal extensions parsing.
-    | CabalParseError
+    -- |Error during @.cabal@ file reading/parsing.
+    | CabalError CabalException
     -- | File is in cabal file, but the source file is not provided where requested.
     | SourceNotFound FilePath
     -- | Source file is provided, but module is not in cabal file.
@@ -52,7 +53,7 @@ and return the corresponding 'HashMap'.
 
 __Throws__:
 
-* 'Extensions.Cabal.CabalException'
+* 'CabalException'
 -}
 getPackageExtentions
     :: FilePath  -- ^ Path to @.cabal@ file.
@@ -63,30 +64,27 @@ getPackageExtentions cabalFile = do
   where
     perModuleParseMerge :: FilePath -> [OnOffExtension] -> IO ExtensionsResult
     perModuleParseMerge path cabalExts = do
-        -- TODO: catch and return SourceNotFound
         moduleRes <- parseFile path
         pure $ mergeCabalAndModule cabalExts path moduleRes
 
 {- | By given path to @.cabal@ file and 'Hashmap' of sources of all Haskell
 modules, analyse extensions for each Haskell module and return the corresponding
 'HashMap'.
-
-__Throws__:
-
-* 'Extensions.Cabal.CabalException'
 -}
 getPackageExtentionsBySources
     :: FilePath  -- ^ Path to @.cabal@ file.
     -> Map FilePath ByteString  -- ^ Path to modules with corresponding sources.
     -> IO (Map FilePath ExtensionsResult)
 getPackageExtentionsBySources cabalFile sourcesMap = do
-    cabalMap <- parseCabalFileExtensions cabalFile
-    pure $ merge
-        (mapMissing cabalNotSource) -- in cabal but not in sources
-        (mapMissing sourceNotCabal) -- in sources but not in cabal
-        (zipWithMatched cabalAndSource) -- in cabal and sources
-        cabalMap
-        sourcesMap
+    cabalRes <- parseCabalHandleException cabalFile
+    pure $ case cabalRes of
+        Left err -> Map.map (const err) sourcesMap
+        Right cabalMap -> merge
+            (mapMissing cabalNotSource) -- in cabal but not in sources
+            (mapMissing sourceNotCabal) -- in sources but not in cabal
+            (zipWithMatched cabalAndSource) -- in cabal and sources
+            cabalMap
+            sourcesMap
   where
     cabalNotSource :: FilePath -> [OnOffExtension] -> ExtensionsResult
     cabalNotSource path _cabalExts = Left $ SourceNotFound path
@@ -104,29 +102,23 @@ getPackageExtentionsBySources cabalFile sourcesMap = do
 
 {- | By given path to @.cabal@ file and path to Haskell module of the
 corresponding package, analyse and return extensions for the given module.
-
-__Throws__:
-
-* 'Extensions.Cabal.CabalException'
 -}
 getModuleExtentions
     :: FilePath  -- ^ Path to @.cabal@ file.
     -> FilePath  -- ^ Path to Haskell module file.
     -> IO ExtensionsResult
 getModuleExtentions cabalFile path = do
-    cabalMap <- parseCabalFileExtensions cabalFile
-    case Map.lookup path cabalMap of
-        Nothing -> pure $ Left $ NotCabalModule path
-        Just cabalExts -> do
-            moduleRes <- parseFile path
-            pure $ mergeCabalAndModule cabalExts path moduleRes
+    cabalRes <- parseCabalHandleException cabalFile
+    case cabalRes of
+        Left err -> pure err
+        Right cabalMap -> case Map.lookup path cabalMap of
+            Nothing -> pure $ Left $ NotCabalModule path
+            Just cabalExts -> do
+                moduleRes <- parseFile path
+                pure $ mergeCabalAndModule cabalExts path moduleRes
 
 {- | By given path to @.cabal@ file and path to Haskell module of the
 corresponding package, analyse and return extensions for the given module.
-
-__Throws__:
-
-* 'Extensions.Cabal.CabalException'
 -}
 getModuleExtentionsBySource
     :: FilePath  -- ^ Maybe path to @.cabal@ file.
@@ -134,11 +126,13 @@ getModuleExtentionsBySource
     -> ByteString  -- ^ Source of a Haskell module file.
     -> IO ExtensionsResult
 getModuleExtentionsBySource cabalFile path source = do
-    cabalMap <- parseCabalFileExtensions cabalFile
-    pure $ case Map.lookup path cabalMap of
-        Nothing        -> Left $ NotCabalModule path
-        Just cabalExts -> mergeCabalAndModule cabalExts path
-            (parseSourceWithPath path source)
+    cabalRes <- parseCabalHandleException cabalFile
+    pure $ case cabalRes of
+        Left cabalError -> cabalError
+        Right cabalMap -> case Map.lookup path cabalMap of
+            Nothing        -> Left $ NotCabalModule path
+            Just cabalExts -> mergeCabalAndModule cabalExts path
+                (parseSourceWithPath path source)
 
 ----------------------------------------------------------------------------
 -- Internal helpers
@@ -152,3 +146,16 @@ mergeCabalAndModule
 mergeCabalAndModule cabalExts path moduleRes = case moduleRes of
     Right moduleExts -> Right $ mergeExtensions $ cabalExts <> moduleExts
     Left parseErr    -> Left $ ModuleParseError path parseErr
+
+-- | 'parseCabalFileExtensions' with 'handleCabalException'.
+parseCabalHandleException
+    :: FilePath
+    -> IO (Either ExtensionsResult (Map FilePath [OnOffExtension]))
+parseCabalHandleException cabalFile = (Right <$> parseCabalFileExtensions cabalFile)
+    `catch` handleCabalException
+
+-- | Handle 'CabalException' and return corresponding 'CabalError'.
+handleCabalException
+    :: CabalException
+    -> IO (Either ExtensionsResult (Map FilePath [OnOffExtension]))
+handleCabalException = pure . Left . Left . CabalError
