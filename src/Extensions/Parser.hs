@@ -33,6 +33,7 @@ import qualified Data.ByteString as BS
 import qualified Text.Parsec as Parsec
 
 
+-- | Error while parsing Haskell source file.
 data ParseError
     -- | File parsing error.
     = ParsecError Parsec.ParseError
@@ -60,7 +61,7 @@ handleParsedExtensions = handleResult . partitionEithers . map toEither
         x:xs -> Left $ x :| xs
 
 {- | By the given file path, reads the file and returns parsed list of
-'Extension's, if parsing succeeds.
+'OnOffExtension's, if parsing succeeds.
 -}
 parseFile :: FilePath -> IO (Either ParseError [OnOffExtension])
 parseFile file = doesFileExist file >>= \hasFile ->
@@ -69,7 +70,7 @@ parseFile file = doesFileExist file >>= \hasFile ->
     else pure $ Left $ FileNotFound file
 
 {- | By the given file path and file source content, returns parsed list of
-'Extension's, if parsing succeeds.
+'OnOffExtension's, if parsing succeeds.
 -}
 parseSourceWithPath :: FilePath -> ByteString -> Either ParseError [OnOffExtension]
 parseSourceWithPath path src = case parse extensionsP path src of
@@ -77,12 +78,12 @@ parseSourceWithPath path src = case parse extensionsP path src of
     Right parsedExts -> first UnknownExtensions $ handleParsedExtensions parsedExts
 
 {- | By the given file source content, returns parsed list of
-'Extension's, if parsing succeeds.
+'OnOffExtension's, if parsing succeeds.
 -}
 parseSource :: ByteString -> Either ParseError [OnOffExtension]
 parseSource = parseSourceWithPath "SourceName"
 
-{- | The main parser of 'Extension's.
+{- | The main parser of 'OnOffExtension's.
 
 It parses language pragmas or comments until end of file or the first line with
 the function/import/module name.
@@ -109,8 +110,8 @@ singleExtensionsP =
     nonExtP :: Parser ()
     nonExtP = () <$ many (try cppP <|> try commentP)
 
-{- | Parses all known and unknown 'Extension's. Returns 'Nothing' for
-extensions, not represented as 'Extension' constructors, but still
+{- | Parses all known and unknown 'OnOffExtension's. Returns 'Nothing' for
+extensions, not represented as 'OnOffExtension' constructors, but still
 specified with the @LANGUAGE@ pragma.
 -}
 extensionP :: Parser (Maybe ParsedExtension)
