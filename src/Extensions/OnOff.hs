@@ -46,7 +46,7 @@ showOnOffExtension = \case
         RecordPuns -> "NamedFieldPuns"
         ext        -> Text.pack $ show ext
 
-{- | Parse 'OnOffextension' from a string that specifies extension.
+{- | Parse 'OnOffExtension' from a string that specifies extension.
 -}
 readOnOffExtension :: String -> Maybe OnOffExtension
 readOnOffExtension s =

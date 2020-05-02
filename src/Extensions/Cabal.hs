@@ -189,12 +189,14 @@ modulesToExtensions extensions srcDirs = case srcDirs of
 toModulePath :: ModuleName -> FilePath
 toModulePath moduleName = toFilePath moduleName <.> "hs"
 
+-- | Convert 'Cabal.Extension' to 'OnOffExtension'.
 cabalToGhcExtension :: Cabal.Extension -> Maybe OnOffExtension
 cabalToGhcExtension = \case
     Cabal.EnableExtension  extension -> On  <$> toGhcExtension extension
     Cabal.DisableExtension extension -> Off <$> toGhcExtension extension
     Cabal.UnknownExtension _ -> Nothing
 
+-- | Convert 'Cabal.KnownExtension' to 'OnOffExtension'.
 toGhcExtension :: Cabal.KnownExtension -> Maybe Extension
 toGhcExtension = \case
     Cabal.OverlappingInstances       -> Just OverlappingInstances
@@ -320,7 +322,7 @@ toGhcExtension = \case
     Cabal.StandaloneKindSignatures -> Just StandaloneKindSignatures
     Cabal.UnliftedNewtypes         -> Just UnliftedNewtypes
 #endif
-    -- GHC extensions, parsed by both Cabal and GHC, but don't have 'Extension' constructor
+    -- GHC extensions, parsed by both Cabal and GHC, but don't have an Extension constructor
     Cabal.Safe                   -> Nothing
     Cabal.Trustworthy            -> Nothing
     Cabal.Unsafe                 -> Nothing

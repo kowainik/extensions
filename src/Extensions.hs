@@ -3,7 +3,7 @@ Copyright: (c) 2020 Kowainik
 SPDX-License-Identifier: MPL-2.0
 Maintainer: Kowainik <xrom.xkov@gmail.com>
 
-Parse Haskell Language Extensions
+Parse Haskell Language Extensions.
 -}
 
 module Extensions
@@ -53,7 +53,7 @@ data ExtensionsError
     deriving stock (Show, Eq)
 
 {- | By given path to @.cabal@ file, analyse extensions for each Haskell module
-and return the corresponding 'HashMap'.
+and return the corresponding 'Map'.
 
 __Throws__:
 
@@ -71,9 +71,9 @@ getPackageExtentions cabalFile = do
         moduleRes <- parseFile path
         pure $ mergeCabalAndModule cabalExts path moduleRes
 
-{- | By given path to @.cabal@ file and 'Hashmap' of sources of all Haskell
+{- | By given path to @.cabal@ file and 'Map' of sources of all Haskell
 modules, analyse extensions for each Haskell module and return the corresponding
-'HashMap'.
+'Map'.
 -}
 getPackageExtentionsBySources
     :: FilePath  -- ^ Path to @.cabal@ file.
