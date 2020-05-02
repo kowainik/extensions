@@ -21,7 +21,9 @@ LANGUAGE pragmas for Haskell modules. It has the following goals:
 3. Should work on common and real cases. `extensions` strives to
    support as many valid syntactic constructions as possible, but it
    may not work on every possible combination of CPP, comments and
-   pragmas, where GHC would work.
+   pragmas, where GHC would work. We encouragle you to
+   [open issue](https://github.com/kowainik/extensions/issues/new) if
+   you encounter any failures when using `extensions`.
 
 ## How to use
 
