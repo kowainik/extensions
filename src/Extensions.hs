@@ -41,7 +41,7 @@ type ExtensionsResult = Either ExtensionsError (Set OnOffExtension)
 data ExtensionsError
     -- | Parse error during module extensions parsing.
     = ModuleParseError FilePath ParseError
-    -- |Error during @.cabal@ file reading/parsing.
+    -- | Error during @.cabal@ file reading/parsing.
     | CabalError CabalException
     -- | File is in cabal file, but the source file is not provided where requested.
     | SourceNotFound FilePath
