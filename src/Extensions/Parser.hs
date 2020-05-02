@@ -166,7 +166,11 @@ commentP = newLines *> (try singleLineCommentP <|> try multiLineCommentP) <* new
         (string "{-" *> manyTill anyChar (try $ string "-}"))
 
 cppP :: Parser [a]
-cppP = [] <$ many newline <* try (char '#' <* noneOf "-") <* manyTill anyChar (try endOfLine)
+cppP =
+    [] <$ many newline
+       <* try (char '#' <* noneOf "-")
+       <* manyTill anyChar (try endOfLine)
+       <* newLines
 
 -- | Any combination of spaces and newlines.
 newLines :: Parser ()

@@ -14,12 +14,16 @@ module Extensions.Cabal
     , parseCabalFileExtensions
     , parseCabalExtensions
     , extractCabalExtensions
+
+      -- * Bridge between Cabal and GHC extensions
+    , cabalToGhcExtension
+    , toGhcExtension
     ) where
 
 import Control.Exception (Exception, throwIO)
 import Data.ByteString (ByteString)
 import Data.Map.Strict (Map)
-import Data.Maybe (mapMaybe)
+import Data.Maybe (catMaybes, mapMaybe)
 import Distribution.ModuleName (ModuleName (..), toFilePath)
 import Distribution.PackageDescription.Parsec (parseGenericPackageDescriptionMaybe)
 import Distribution.Types.Benchmark (Benchmark (..))
@@ -147,23 +151,40 @@ modulesToExtensions
     -> [FilePath]
     -- ^ All modules in the stanza
     -> IO (Map FilePath [OnOffExtension])
-modulesToExtensions extensions srcDirs = go []
+modulesToExtensions extensions srcDirs = case srcDirs of
+    [] -> findTopLevel
+    _  -> findInDirs []
   where
-    go :: [FilePath] -> [FilePath] -> IO (Map FilePath [OnOffExtension])
-    go files [] = pure $ Map.fromList $ map (, extensions) files
-    go files (m:ms) = findDir m srcDirs >>= \case
-        Nothing         -> go files ms
-        Just modulePath -> go (modulePath : files) ms
+    mapFromPaths :: [FilePath] -> Map FilePath [OnOffExtension]
+    mapFromPaths = Map.fromList . map (, extensions)
 
+    findInDirs :: [FilePath] -> [FilePath] -> IO (Map FilePath [OnOffExtension])
+    findInDirs res [] = pure $ mapFromPaths res
+    findInDirs res (m:ms) = findDir m srcDirs >>= \case
+        Nothing         -> findInDirs res ms
+        Just modulePath -> findInDirs (modulePath : res) ms
+
+    findTopLevel :: [FilePath] -> IO (Map FilePath [OnOffExtension])
+    findTopLevel modules = do
+        mPaths <- traverse (withDir Nothing) modules
+        pure $ mapFromPaths $ catMaybes mPaths
+
+    -- Find directory where path exists and return full path
     findDir :: FilePath -> [FilePath] -> IO (Maybe FilePath)
     findDir modulePath = \case
         [] -> pure Nothing
-        dir:dirs -> do
-            let path = dir </> modulePath
-            isFile <- doesFileExist path
+        dir:dirs -> withDir (Just dir) modulePath >>= \case
+            Nothing   -> findDir modulePath dirs
+            Just path -> pure $ Just path
+
+    -- returns path if it exists inside optional dir
+    withDir :: Maybe FilePath -> FilePath -> IO (Maybe FilePath)
+    withDir mDir path = do
+        let fullPath = maybe path (\dir -> dir </> path) mDir
+        doesFileExist fullPath >>= \isFile ->
             if isFile
-                then pure $ Just path
-                else findDir modulePath dirs
+            then pure $ Just fullPath
+            else pure Nothing
 
 toModulePath :: ModuleName -> FilePath
 toModulePath moduleName = toFilePath moduleName <.> "hs"

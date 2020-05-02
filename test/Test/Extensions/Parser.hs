@@ -38,6 +38,7 @@ failSpec = describe "Expected test failures" $ do
 
 onlyExtensionsSpec :: Spec
 onlyExtensionsSpec = describe "Parsing only extensions without anything else" $ do
+    itShouldParse "" []
     itShouldParse "{-# LANGUAGE TypeApplications #-}" [TypeApplications]
     itShouldParse "{-# LaNgUaGe CPP #-}" [Cpp]
     itShouldParseOnOff "{-# LANGUAGE NoImplicitPrelude #-}" [Off ImplicitPrelude]
@@ -368,6 +369,17 @@ mixSpec = describe "Parsing combinations of different parts" $ do
         , "#-}"
         ])
         [TypeApplications, LambdaCase]
+    itShouldParse (unlines
+        [ "{-# LANGUAGE CPP #-}"
+        , "#if __GLASGOW_HASKELL__ >= 702"
+        , "{-# LANGUAGE Trustworthy #-}"
+        , "#endif"
+        , ""
+        , "-- |"
+        , "-- Module      : Data.ByteString.Base64"
+        ])
+        [Cpp]
+
 
 itShouldParse :: String -> [Extension] -> SpecWith (Arg Expectation)
 itShouldParse s = itShouldParseOnOff s . map On
