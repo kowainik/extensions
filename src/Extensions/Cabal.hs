@@ -18,6 +18,7 @@ module Extensions.Cabal
       -- * Bridge between Cabal and GHC extensions
     , cabalToGhcExtension
     , toGhcExtension
+    , toSafeExtensions
     ) where
 
 import Control.Exception (Exception, throwIO)
@@ -61,6 +62,7 @@ data CabalException
     = CabalFileNotFound FilePath
     -- | Parsing errors in the @.cabal@ file.
     | CabalParseError Text
+    -- | Conflicting 'SafeHaskellExtension's in one scope.
     | CabalSafeExtensionsConflict (NonEmpty SafeHaskellExtension)
     deriving stock (Show, Eq)
     deriving anyclass (Exception)
@@ -212,7 +214,7 @@ modulesToExtensions extensions srcDirs = case srcDirs of
 toModulePath :: ModuleName -> FilePath
 toModulePath moduleName = toFilePath moduleName <.> "hs"
 
--- | Convert 'Cabal.Extension' to 'OnOffExtension'.
+-- | Convert 'Cabal.Extension' to 'OnOffExtension' or 'SafeHaskellExtension'.
 cabalToGhcExtension :: Cabal.Extension -> Maybe (Either SafeHaskellExtension OnOffExtension)
 cabalToGhcExtension = \case
     Cabal.EnableExtension  extension -> case (toGhcExtension extension, toSafeExtensions extension) of
@@ -362,6 +364,7 @@ toGhcExtension = \case
     Cabal.SafeImports            -> Nothing
     Cabal.NewQualifiedOperators  -> Nothing
 
+-- | Convert 'Cabal.KnownExtension' to 'SafeHaskellExtension'.
 toSafeExtensions :: Cabal.KnownExtension -> Maybe SafeHaskellExtension
 toSafeExtensions = \case
     Cabal.Safe        -> Just Safe

@@ -40,7 +40,7 @@ data ParseError
     = ParsecError Parsec.ParseError
     -- | Uknown extensions were used in the module.
     | UnknownExtensions (NonEmpty String)
-    -- | Safe Haskell extensions conflict
+    -- | Conflicting 'SafeHaskellExtension's in one scope.
     | SafeHaskellConflict (NonEmpty SafeHaskellExtension)
     -- | Module file not found.
     | FileNotFound FilePath
@@ -60,6 +60,7 @@ handleParsedExtensions = handleResult . partitionEithers . map toEither
     toEither (KnownExtension ext)   = Right $ Right ext
     toEither (SafeExtension ext)    = Right $ Left ext
 
+    -- Make sure that there is no conflicting 'SafeHaskellExtension's.
     handleResult
         :: ([String], [Either SafeHaskellExtension OnOffExtension])
         -> Either ParseError ParsedExtensions
@@ -76,8 +77,8 @@ handleParsedExtensions = handleResult . partitionEithers . map toEither
             s:ss -> Left $ SafeHaskellConflict $ s :| ss
         x:xs -> Left $ UnknownExtensions $ x :| xs
 
-{- | By the given file path, reads the file and returns parsed list of
-'OnOffExtension's, if parsing succeeds.
+{- | By the given file path, reads the file and returns 'ParsedExtensions', if
+parsing succeeds.
 -}
 parseFile :: FilePath -> IO (Either ParseError ParsedExtensions)
 parseFile file = doesFileExist file >>= \hasFile ->
@@ -85,23 +86,25 @@ parseFile file = doesFileExist file >>= \hasFile ->
     then parseSourceWithPath file <$> BS.readFile file
     else pure $ Left $ FileNotFound file
 
-{- | By the given file path and file source content, returns parsed list of
-'OnOffExtension's, if parsing succeeds. This function takes a path to
-a Haskell source file. The path is only used for error message. Pass empty
-string or use 'parseSource', if you don't have a path to a Haskell module.
+{- | By the given file path and file source content, returns 'ParsedExtensions',
+if parsing succeeds.
+
+This function takes a path to a Haskell source file. The path is only used for
+error message. Pass empty string or use 'parseSource', if you don't have a path
+to a Haskell module.
 -}
 parseSourceWithPath :: FilePath -> ByteString -> Either ParseError ParsedExtensions
 parseSourceWithPath path src = case parse extensionsP path src of
     Left err         -> Left $ ParsecError err
     Right parsedExts -> handleParsedExtensions parsedExts
 
-{- | By the given file source content, returns parsed list of
-'OnOffExtension's, if parsing succeeds.
+{- | By the given file source content, returns 'ParsedExtensions', if parsing
+succeeds.
 -}
 parseSource :: ByteString -> Either ParseError ParsedExtensions
 parseSource = parseSourceWithPath "SourceName"
 
-{- | The main parser of 'OnOffExtension's.
+{- | The main parser of 'ParsedExtension'.
 
 It parses language pragmas or comments until end of file or the first line with
 the function/import/module name.
@@ -127,9 +130,7 @@ singleExtensionsP =
     nonExtP :: Parser ()
     nonExtP = () <$ many (try cppP <|> try commentP)
 
-{- | Parses all known and unknown 'OnOffExtension's. Returns 'Nothing' for
-extensions, not represented as 'OnOffExtension' constructors, but still
-specified with the @LANGUAGE@ pragma.
+{- | Parses all known and unknown 'OnOffExtension's or 'SafeHaskellExtension's.
 -}
 extensionP :: Parser ParsedExtension
 extensionP = (spaces *> many1 alphaNum <* spaces) <&> \txt ->
@@ -183,6 +184,14 @@ commentP = newLines *> (try singleLineCommentP <|> try multiLineCommentP) <* new
     multiLineCommentP = [] <$
         (string "{-" *> manyTill anyChar (try $ string "-}"))
 
+{- | CPP syntax parser.
+
+  @
+  #if __GLASGOW_HASKELL__ < 810
+  -- Could be more Language pragmas that should be parsed
+  #endif
+  @
+-}
 cppP :: Parser [a]
 cppP =
     [] <$ many newline

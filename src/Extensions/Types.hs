@@ -50,13 +50,20 @@ import qualified Data.Set as Set
 import qualified Data.Text as Text
 
 
-{- | -}
+{- | Main returned data type that includes merged 'OnOffExtension's and possibly
+one 'SafeHaskellExtension'.
+-}
 data Extensions = Extensions
     { extensionsAll  :: !(Set OnOffExtension)
     , extensionsSafe :: !(Maybe SafeHaskellExtension)
     } deriving stock (Show, Eq)
 
-{- | -}
+{- | Extensions that are collected in the result of parsing @.cabal@ file or
+Haskell module (both 'OnOffExtension' and possibly one 'SafeHaskellExtension').
+
+'OnOffExtension's are not necessary unique. They reflect exactly the extensions
+found during parsing.
+-}
 data ParsedExtensions = ParsedExtensions
     { parsedExtensionsAll  :: ![OnOffExtension]
     , parsedExtensionsSafe :: !(Maybe SafeHaskellExtension)
@@ -68,12 +75,14 @@ data CabalAndModuleExtensions = CabalAndModuleExtensions
     , moduleExtensions :: !ParsedExtensions
     } deriving stock (Show, Eq)
 
+-- | Empty 'Extensions' with no specified 'SafeHaskellExtension'.
 emptyExtensions :: Extensions
 emptyExtensions = Extensions
     { extensionsAll = mempty
     , extensionsSafe = Nothing
     }
 
+-- | Empty 'ParsedExtensions' with no specified 'SafeHaskellExtension'.
 emptyParsedExtensions :: ParsedExtensions
 emptyParsedExtensions = ParsedExtensions
     { parsedExtensionsAll = []
@@ -159,26 +168,30 @@ mergeExtensions = foldl' handleExt Set.empty
         | e `elem` default2010Extensions = Set.insert (Off e) exts
         | otherwise                      = Set.delete (On e) exts
 
+{- | Similar to 'mergeExtensions', but also merge 'SafeHaskellExtension's.
+In case of conflicting 'SafeHaskellExtension' returns 'Left' with the pair od
+conflicting extension constructors.
+-}
 mergeAnyExtensions
     :: ParsedExtensions  -- ^ Cabal parsed extensions.
     -> ParsedExtensions  -- ^ Module parsed extensions.
-    -> Maybe Extensions
+    -> Either (SafeHaskellExtension, SafeHaskellExtension) Extensions
 mergeAnyExtensions (ParsedExtensions exts1 safe1) (ParsedExtensions exts2 safe2) = case (safe1, safe2) of
-    (Nothing, safe) -> Just $ Extensions
+    (Nothing, safe) -> Right $ Extensions
         { extensionsAll = mergedExts
         , extensionsSafe = safe
         }
-    (safe, Nothing) -> Just $ Extensions
+    (safe, Nothing) -> Right $ Extensions
         { extensionsAll = mergedExts
         , extensionsSafe = safe
         }
-    _  ->
+    (Just s1, Just s2) ->
         if safe1 == safe2
-        then Just $ Extensions
+        then Right $ Extensions
             { extensionsAll = mergedExts
             , extensionsSafe = safe1
             }
-        else Nothing
+        else Left (s1, s2)
   where
     mergedExts :: Set OnOffExtension
     mergedExts = mergeExtensions (exts1 <> exts2)

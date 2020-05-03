@@ -26,18 +26,19 @@ module Extensions
 import Control.Exception (catch)
 import Data.ByteString (ByteString)
 import Data.Functor ((<&>))
+import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map.Merge.Strict (mapMissing, merge, zipWithMatched)
 import Data.Map.Strict (Map)
 
 import Extensions.Cabal (CabalException, parseCabalFileExtensions)
 import Extensions.Parser (ParseError, parseFile, parseSourceWithPath)
 import Extensions.Types (CabalAndModuleExtensions (..), Extensions (..), ParsedExtensions (..),
-                         mergeAnyExtensions)
+                         SafeHaskellExtension, mergeAnyExtensions)
 
 import qualified Data.Map.Strict as Map
 
 
--- | Type alias for the result of extensions analyse.
+-- | Type alias for the result of extensions analysis.
 type ExtensionsResult = Either ExtensionsError Extensions
 
 -- | Represents possible errors during the work of extensions analyser.
@@ -50,11 +51,12 @@ data ExtensionsError
     | SourceNotFound FilePath
     -- | Source file is provided, but module is not in cabal file.
     | NotCabalModule FilePath
-    | SafeHaskellConflict
+    -- | Conflicting 'SafeHaskellExtension's in one scope.
+    | SafeHaskellConflict (NonEmpty SafeHaskellExtension)
     deriving stock (Show, Eq)
 
 {- | By given path to @.cabal@ file, analyse extensions for each Haskell module
-and return the corresponding 'Map'.
+and return the corresponding 'Map' with 'ExtensionsResult's.
 
 __Throws__:
 
@@ -74,7 +76,7 @@ getPackageExtentions cabalFile = do
 
 {- | By given path to @.cabal@ file and 'Map' of sources of all Haskell
 modules, analyse extensions for each Haskell module and return the corresponding
-'Map'.
+'Map' with 'ExtensionsResult's.
 -}
 getPackageExtentionsBySources
     :: FilePath  -- ^ Path to @.cabal@ file.
@@ -181,8 +183,8 @@ mergeCabalAndModule
     -> ExtensionsResult
 mergeCabalAndModule cabalExts path moduleRes = case moduleRes of
     Right moduleExts -> case mergeAnyExtensions cabalExts moduleExts of
-        Just res -> Right res
-        Nothing  -> Left SafeHaskellConflict
+        Right res     -> Right res
+        Left (s1, s2) -> Left $ SafeHaskellConflict $ s1 :| [s2]
     Left parseErr    -> Left $ ModuleParseError path parseErr
 
 -- | 'parseCabalFileExtensions' with 'handleCabalException'.
