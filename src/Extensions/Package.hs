@@ -21,7 +21,6 @@ module Extensions.Package
 import Control.Exception (catch)
 import Data.ByteString (ByteString)
 import Data.Functor ((<&>))
-import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map.Merge.Strict (mapMissing, merge, zipWithMatched)
 import Data.Map.Strict (Map)
 
@@ -161,9 +160,7 @@ mergeCabalAndModule
     -> Either ModuleParseError ParsedExtensions
     -> ExtensionsResult
 mergeCabalAndModule cabalExts path moduleRes = case moduleRes of
-    Right moduleExts -> case mergeAnyExtensions cabalExts moduleExts of
-        Right res     -> Right res
-        Left (s1, s2) -> Left $ SafeHaskellConflict $ s1 :| [s2]
+    Right moduleExts -> mergeAnyExtensions cabalExts moduleExts
     Left parseErr    -> Left $ ModuleParseError path parseErr
 
 -- | 'parseCabalFileExtensions' with 'handleCabalException'.

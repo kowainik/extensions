@@ -224,13 +224,13 @@ mergeExtensions = foldl' handleExt Set.empty
         | otherwise                      = Set.delete (On e) exts
 
 {- | Similar to 'mergeExtensions', but also merge 'SafeHaskellExtension's.
-In case of conflicting 'SafeHaskellExtension' returns 'Left' with the pair od
-conflicting extension constructors.
+In case of conflicting 'SafeHaskellExtension' returns 'Left' with the pair of
+conflicting extension constructors under 'SafeHaskellConflict' error.
 -}
 mergeAnyExtensions
     :: ParsedExtensions  -- ^ Cabal parsed extensions.
     -> ParsedExtensions  -- ^ Module parsed extensions.
-    -> Either (SafeHaskellExtension, SafeHaskellExtension) Extensions
+    -> ExtensionsResult
 mergeAnyExtensions (ParsedExtensions exts1 safe1) (ParsedExtensions exts2 safe2) = case (safe1, safe2) of
     (Nothing, safe) -> Right $ Extensions
         { extensionsAll = mergedExts
@@ -246,7 +246,7 @@ mergeAnyExtensions (ParsedExtensions exts1 safe1) (ParsedExtensions exts2 safe2)
             { extensionsAll = mergedExts
             , extensionsSafe = safe1
             }
-        else Left (s1, s2)
+        else Left $ SafeHaskellConflict $ s1 :| [s2]
   where
     mergedExts :: Set OnOffExtension
     mergedExts = mergeExtensions (exts1 <> exts2)
