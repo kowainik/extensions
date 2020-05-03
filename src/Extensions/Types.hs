@@ -155,7 +155,7 @@ data SafeHaskellExtension
     = Unsafe
     | Trustworthy
     | Safe
-    deriving stock (Show, Read, Eq)
+    deriving stock (Show, Read, Eq, Ord, Enum, Bounded)
 
 -- | Represents enabled/disabled extensions.
 data OnOffExtension
