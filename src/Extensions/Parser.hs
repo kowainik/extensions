@@ -70,7 +70,9 @@ parseFile file = doesFileExist file >>= \hasFile ->
     else pure $ Left $ FileNotFound file
 
 {- | By the given file path and file source content, returns parsed list of
-'OnOffExtension's, if parsing succeeds.
+'OnOffExtension's, if parsing succeeds. This function takes a path to
+a Haskell source file. The path is only used for error message. Pass empty
+string or use 'parseSource', if you don't have a path to a Haskell module.
 -}
 parseSourceWithPath :: FilePath -> ByteString -> Either ParseError [OnOffExtension]
 parseSourceWithPath path src = case parse extensionsP path src of
