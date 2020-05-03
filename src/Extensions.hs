@@ -28,11 +28,11 @@ import Extensions.Types
 Main data types to work with any kind of extensions and all possible errors
 during the work of @extensions@ functions.
 
-To see more on Haskell Extensions, see the following documentation page:
+To read more on Haskell Extensions, see the following documentation page:
 
  * [GHC Language Extensions](https://downloads.haskell.org/~ghc/latest/docs/html/users_guide/glasgow_exts.html)
 
-In @extensions@ we support both @Haskell2010@ and @SafeHaskell@ supported
+In @extensions@ we support both @Haskell2010@ and @SafeHaskell@
 extensions.
 -}
 
@@ -44,7 +44,7 @@ extensions information in a convenient way. However, there are functions that
 return Cabal and Module information separately for specified modules.
 
 These functions use provided by "Extensions.Cabal" and "Extensions.Module"
-functions to archive that.
+functions to achieve that.
 -}
 
 {- $cabal
