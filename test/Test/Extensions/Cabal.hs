@@ -9,7 +9,7 @@ import GHC.LanguageExtensions.Type (Extension (..))
 import Test.Hspec (Spec, describe, it, shouldBe, shouldThrow)
 
 import Extensions.Cabal (CabalException (..), parseCabalExtensions, parseCabalFileExtensions)
-import Extensions.OnOff (OnOffExtension (..))
+import Extensions.Types (OnOffExtension (..), ParsedExtensions (..), emptyParsedExtensions)
 
 import qualified Data.Map.Strict as Map
 import qualified Data.Text as Text
@@ -41,26 +41,28 @@ cabalSpec = describe "Cabal file Extensions Parser" $ do
             extMap `shouldBe` singleExtensionMap
     it "should parse extensions.cabal" $
         parseCabalFileExtensions "extensions.cabal" >>= \extMap ->
-            extMap `shouldBe` extensionsMap
+            extMap `shouldBe` expectedMap
   where
     exampleCabal :: FilePath
     exampleCabal = "example.cabal"
 
-    singleModuleMap :: Map FilePath [OnOffExtension]
-    singleModuleMap = Map.singleton "src/Extensions.hs" []
+    singleModuleMap :: Map FilePath ParsedExtensions
+    singleModuleMap = Map.singleton "src/Extensions.hs" emptyParsedExtensions
 
-    singleExtensionMap :: Map FilePath [OnOffExtension]
-    singleExtensionMap = Map.singleton "src/Extensions.hs" [On TypeApplications]
+    singleExtensionMap :: Map FilePath ParsedExtensions
+    singleExtensionMap = Map.singleton "src/Extensions.hs" emptyParsedExtensions
+        { parsedExtensionsAll = [On TypeApplications]
+        }
 
     -- Map for the project itself
-    extensionsMap :: Map FilePath [OnOffExtension]
-    extensionsMap = Map.fromList
+    expectedMap :: Map FilePath ParsedExtensions
+    expectedMap = Map.fromList
         [ "app/Cli.hs"                     `to` defaultExtensions
         , "app/Main.hs"                    `to` defaultExtensions
         , "src/Extensions.hs"              `to` defaultExtensions
         , "src/Extensions/Cabal.hs"        `to` defaultExtensions
-        , "src/Extensions/OnOff.hs"        `to` defaultExtensions
         , "src/Extensions/Parser.hs"       `to` defaultExtensions
+        , "src/Extensions/Types.hs"        `to` defaultExtensions
         , "test/Test/Extensions.hs"        `to` defaultExtensions
         , "test/Test/Extensions/Cabal.hs"  `to` defaultExtensions
         , "test/Test/Extensions/OnOff.hs"  `to` defaultExtensions
@@ -133,20 +135,22 @@ cabalSpec = describe "Cabal file Extensions Parser" $ do
         , "  exposed-modules: Extensions"
         ]
 
-defaultExtensions :: [OnOffExtension]
-defaultExtensions = map On
-    [ ConstraintKinds
-    , DeriveGeneric
-    , DerivingStrategies
-    , GeneralizedNewtypeDeriving
-    , InstanceSigs
-    , KindSignatures
-    , LambdaCase
-    , OverloadedStrings
-    , RecordWildCards
-    , ScopedTypeVariables
-    , StandaloneDeriving
-    , TupleSections
-    , TypeApplications
-    , ViewPatterns
-    ]
+defaultExtensions :: ParsedExtensions
+defaultExtensions = emptyParsedExtensions
+    { parsedExtensionsAll = map On
+        [ ConstraintKinds
+        , DeriveGeneric
+        , DerivingStrategies
+        , GeneralizedNewtypeDeriving
+        , InstanceSigs
+        , KindSignatures
+        , LambdaCase
+        , OverloadedStrings
+        , RecordWildCards
+        , ScopedTypeVariables
+        , StandaloneDeriving
+        , TupleSections
+        , TypeApplications
+        , ViewPatterns
+        ]
+    }

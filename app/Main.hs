@@ -2,7 +2,8 @@ module Main (main) where
 
 import Colourista (errorMessage, infoMessage)
 import Control.Exception (catch)
-import Data.Foldable (forM_)
+import Data.Foldable (forM_, for_)
+import Data.List (nub)
 import Data.Text (Text)
 import GHC.Exts (sortWith)
 import System.Directory (doesFileExist, getCurrentDirectory, listDirectory)
@@ -12,8 +13,9 @@ import System.FilePath (takeExtension, (</>))
 import Cli (ExtensionsArgs (..), Toggle (..), runExtensionsCli)
 import Extensions (ExtensionsResult, getModuleExtentions, getPackageExtentions)
 import Extensions.Cabal (CabalException, parseCabalFileExtensions)
-import Extensions.OnOff (OnOffExtension (..), mergeExtensions, showOnOffExtension)
 import Extensions.Parser (parseFile)
+import Extensions.Types (Extensions (..), OnOffExtension (..), ParsedExtensions (..),
+                         SafeHaskellExtension, showOnOffExtension)
 
 import qualified Data.Map as Map
 import qualified Data.Text as Text
@@ -72,9 +74,12 @@ run mCabalPath mModulePath cabal modules = case (mCabalPath, mModulePath, cabal,
         parseFile modulePath >>= \case
             Left err ->
                 errorMessage $ "Error parsing module: " <> tshow err
-            Right exts -> do
+            Right ParsedExtensions{..} -> do
                 infoMessage $ "Extensions defined only in " <> Text.pack modulePath
-                printOnOffExtensions exts
+                printOnOffExtensions parsedExtensionsAll
+                case parsedExtensionsSafe of
+                    Just safe -> print safe
+                    Nothing   -> pure ()
 
     -- --cabal-file-path --module-file-path
     (Just cabalPath, Just modulePath, Enabled, Enabled) ->
@@ -122,16 +127,26 @@ printAllModulesExtensions cabalPath = do
         putStrLn path
         case extsRes of
             Left err   -> errorMessage $ "  Error: " <> tshow err
-            Right exts ->
-                mapM_ (TextIO.putStrLn . ("    " <>) . showOnOffExtension) exts
+            Right Extensions{..} -> do
+                mapM_ (TextIO.putStrLn . ("    " <>) . showOnOffExtension) extensionsAll
+                case extensionsSafe of
+                    Just safe -> putStrLn $ "    " <> show safe
+                    Nothing   -> pure ()
 
 printOnlyCabalExtensions :: FilePath -> IO ()
 printOnlyCabalExtensions cabalPath = do
     cabalExts <- handleCabalException $ parseCabalFileExtensions cabalPath
-    let exts = mergeExtensions $ concatMap snd $ Map.toList cabalExts
+    let (g, x) = concatAll $ Map.elems cabalExts
+    let (exts, mSafe) = ( nub g , nub x)
 
     infoMessage $ "All language extensions defined in " <> Text.pack cabalPath
     printOnOffExtensions exts
+    for_ mSafe $ \case
+        Just safe -> print safe
+        Nothing   -> pure ()
+  where
+    concatAll :: [ParsedExtensions] -> ([OnOffExtension], [Maybe SafeHaskellExtension])
+    concatAll = foldMap (\ParsedExtensions{..} -> (parsedExtensionsAll, [parsedExtensionsSafe]))
 
 handleCabalException :: IO a -> IO a
 handleCabalException action = action `catch` \(exc :: CabalException) -> exitAfter $
@@ -143,7 +158,11 @@ printOnOffExtensions = mapM_ (TextIO.putStrLn . showOnOffExtension)
 printExtensionsResult :: ExtensionsResult -> IO ()
 printExtensionsResult = \case
     Left err -> errorMessage $ "Error in finding extensions: " <> tshow err
-    Right exts -> printOnOffExtensions exts
+    Right Extensions{..} -> do
+        printOnOffExtensions extensionsAll
+        case extensionsSafe of
+            Just safe -> print safe
+            Nothing   -> pure ()
 
 tshow :: Show a => a -> Text
 tshow = Text.pack . show

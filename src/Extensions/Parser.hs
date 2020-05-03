@@ -13,21 +13,22 @@ module Extensions.Parser
        , parseSourceWithPath
        ) where
 
-import Data.Bifunctor (first)
 import Data.ByteString (ByteString)
 import Data.Char (toLower, toUpper)
 import Data.Either (partitionEithers)
 import Data.Foldable (traverse_)
 import Data.Functor ((<&>))
+import Data.List (nub)
 import Data.List.NonEmpty (NonEmpty (..))
-import Data.Maybe (catMaybes)
 import System.Directory (doesFileExist)
 import Text.Parsec (alphaNum, between, char, eof, many, many1, manyTill, noneOf, oneOf, parse,
                     sepBy1, try, (<|>))
 import Text.Parsec.ByteString (Parser)
 import Text.Parsec.Char (anyChar, endOfLine, letter, newline, space, spaces, string)
+import Text.Read (readMaybe)
 
-import Extensions.OnOff (OnOffExtension (..), readOnOffExtension)
+import Extensions.Types (OnOffExtension (..), ParsedExtensions (..), SafeHaskellExtension (..),
+                         readOnOffExtension)
 
 import qualified Data.ByteString as BS
 import qualified Text.Parsec as Parsec
@@ -39,6 +40,8 @@ data ParseError
     = ParsecError Parsec.ParseError
     -- | Uknown extensions were used in the module.
     | UnknownExtensions (NonEmpty String)
+    -- | Conflicting 'SafeHaskellExtension's in one scope.
+    | SafeHaskellConflict (NonEmpty SafeHaskellExtension)
     -- | Module file not found.
     | FileNotFound FilePath
     deriving stock (Show, Eq)
@@ -46,46 +49,62 @@ data ParseError
 -- | Internal data type for known and unknown extensions.
 data ParsedExtension
     = KnownExtension OnOffExtension
+    | SafeExtension SafeHaskellExtension
     | UnknownExtension String
 
-handleParsedExtensions :: [ParsedExtension] -> Either (NonEmpty String) [OnOffExtension]
+handleParsedExtensions :: [ParsedExtension] -> Either ParseError ParsedExtensions
 handleParsedExtensions = handleResult . partitionEithers . map toEither
   where
-    toEither :: ParsedExtension -> Either String OnOffExtension
+    toEither :: ParsedExtension -> Either String (Either SafeHaskellExtension OnOffExtension)
     toEither (UnknownExtension ext) = Left ext
-    toEither (KnownExtension ext)   = Right ext
+    toEither (KnownExtension ext)   = Right $ Right ext
+    toEither (SafeExtension ext)    = Right $ Left ext
 
-    handleResult :: ([String], [OnOffExtension]) -> Either (NonEmpty String) [OnOffExtension]
-    handleResult (unknown, known) = case unknown of
-        []   -> Right known
-        x:xs -> Left $ x :| xs
+    -- Make sure that there is no conflicting 'SafeHaskellExtension's.
+    handleResult
+        :: ([String], [Either SafeHaskellExtension OnOffExtension])
+        -> Either ParseError ParsedExtensions
+    handleResult (unknown, knownAndSafe) = case unknown of
+        []   -> let (safe, known) = partitionEithers knownAndSafe in case nub safe of
+            []   -> Right ParsedExtensions
+                { parsedExtensionsAll = known
+                , parsedExtensionsSafe = Nothing
+                }
+            [s]  -> Right ParsedExtensions
+                { parsedExtensionsAll = known
+                , parsedExtensionsSafe = Just s
+                }
+            s:ss -> Left $ SafeHaskellConflict $ s :| ss
+        x:xs -> Left $ UnknownExtensions $ x :| xs
 
-{- | By the given file path, reads the file and returns parsed list of
-'OnOffExtension's, if parsing succeeds.
+{- | By the given file path, reads the file and returns 'ParsedExtensions', if
+parsing succeeds.
 -}
-parseFile :: FilePath -> IO (Either ParseError [OnOffExtension])
+parseFile :: FilePath -> IO (Either ParseError ParsedExtensions)
 parseFile file = doesFileExist file >>= \hasFile ->
     if hasFile
     then parseSourceWithPath file <$> BS.readFile file
     else pure $ Left $ FileNotFound file
 
-{- | By the given file path and file source content, returns parsed list of
-'OnOffExtension's, if parsing succeeds. This function takes a path to
-a Haskell source file. The path is only used for error message. Pass empty
-string or use 'parseSource', if you don't have a path to a Haskell module.
+{- | By the given file path and file source content, returns 'ParsedExtensions',
+if parsing succeeds.
+
+This function takes a path to a Haskell source file. The path is only used for
+error message. Pass empty string or use 'parseSource', if you don't have a path
+to a Haskell module.
 -}
-parseSourceWithPath :: FilePath -> ByteString -> Either ParseError [OnOffExtension]
+parseSourceWithPath :: FilePath -> ByteString -> Either ParseError ParsedExtensions
 parseSourceWithPath path src = case parse extensionsP path src of
     Left err         -> Left $ ParsecError err
-    Right parsedExts -> first UnknownExtensions $ handleParsedExtensions parsedExts
+    Right parsedExts -> handleParsedExtensions parsedExts
 
-{- | By the given file source content, returns parsed list of
-'OnOffExtension's, if parsing succeeds.
+{- | By the given file source content, returns 'ParsedExtensions', if parsing
+succeeds.
 -}
-parseSource :: ByteString -> Either ParseError [OnOffExtension]
+parseSource :: ByteString -> Either ParseError ParsedExtensions
 parseSource = parseSourceWithPath "SourceName"
 
-{- | The main parser of 'OnOffExtension's.
+{- | The main parser of 'ParsedExtension'.
 
 It parses language pragmas or comments until end of file or the first line with
 the function/import/module name.
@@ -106,23 +125,20 @@ extensionsP = concat <$> manyTill
 -}
 singleExtensionsP :: Parser [ParsedExtension]
 singleExtensionsP =
-    catMaybes <$>
     languagePragmaP (commaSep (nonExtP *> extensionP <* nonExtP) <* spaces)
   where
     nonExtP :: Parser ()
     nonExtP = () <$ many (try cppP <|> try commentP)
 
-{- | Parses all known and unknown 'OnOffExtension's. Returns 'Nothing' for
-extensions, not represented as 'OnOffExtension' constructors, but still
-specified with the @LANGUAGE@ pragma.
+{- | Parses all known and unknown 'OnOffExtension's or 'SafeHaskellExtension's.
 -}
-extensionP :: Parser (Maybe ParsedExtension)
+extensionP :: Parser ParsedExtension
 extensionP = (spaces *> many1 alphaNum <* spaces) <&> \txt ->
-    if isNotExtension txt
-    then Nothing
-    else Just $ case readOnOffExtension txt of
+    case readOnOffExtension txt of
         Just ext -> KnownExtension ext
-        Nothing  -> UnknownExtension txt
+        Nothing  -> case readMaybe @SafeHaskellExtension txt of
+            Just ext -> SafeExtension ext
+            Nothing  -> UnknownExtension txt
 
 {- | Parser for standard language pragma keywords: @{-# LANGUAGE XXX #-}@
 -}
@@ -168,6 +184,14 @@ commentP = newLines *> (try singleLineCommentP <|> try multiLineCommentP) <* new
     multiLineCommentP = [] <$
         (string "{-" *> manyTill anyChar (try $ string "-}"))
 
+{- | CPP syntax parser.
+
+  @
+  #if __GLASGOW_HASKELL__ < 810
+  -- Could be more Language pragmas that should be parsed
+  #endif
+  @
+-}
 cppP :: Parser [a]
 cppP =
     [] <$ many newline
@@ -178,10 +202,3 @@ cppP =
 -- | Any combination of spaces and newlines.
 newLines :: Parser ()
 newLines = () <$ many (space <|> endOfLine)
-
-isNotExtension :: String -> Bool
-isNotExtension = \case
-    "Safe"        -> True
-    "Unsafe"      -> True
-    "Trustworthy" -> True
-    _             -> False

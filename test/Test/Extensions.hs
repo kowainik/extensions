@@ -11,7 +11,7 @@ import Test.Hspec (Spec, describe, it, shouldBe)
 
 import Extensions (ExtensionsError (..), ExtensionsResult, getModuleExtentions,
                    getModuleExtentionsBySource, getPackageExtentions, getPackageExtentionsBySources)
-import Extensions.OnOff (OnOffExtension (..))
+import Extensions.Types (Extensions (..), OnOffExtension (..), ParsedExtensions (..))
 import Test.Extensions.Cabal (defaultExtensions)
 
 import qualified Data.ByteString as BS
@@ -52,13 +52,13 @@ getExtensionsSpec = describe "Get Extensions" $ do
 resultMap :: Map FilePath ExtensionsResult
 resultMap = Map.fromList
     [ "app/Cli.hs"                     `to` Right
-        (exts <> Set.singleton (On ApplicativeDo))
+        (extsPlus $ Set.singleton (On ApplicativeDo))
     , "app/Main.hs"                    `to` Right exts
     , "src/Extensions.hs"              `to` Right exts
     , "src/Extensions/Cabal.hs"        `to` Right
-        (exts <> Set.fromList [On Cpp, On DeriveAnyClass])
-    , "src/Extensions/OnOff.hs"        `to` Right exts
+        (extsPlus $ Set.fromList [On Cpp, On DeriveAnyClass] )
     , "src/Extensions/Parser.hs"       `to` Right exts
+    , "src/Extensions/Types.hs"        `to` Right exts
     , "test/Test/Extensions.hs"        `to` Right exts
     , "test/Test/Extensions/Cabal.hs"  `to` Right exts
     , "test/Test/Extensions/OnOff.hs"  `to` Right exts
@@ -68,8 +68,16 @@ resultMap = Map.fromList
   where
     to = (,)
 
-exts :: Set OnOffExtension
-exts = Set.fromList defaultExtensions
+exts :: Extensions
+exts = Extensions
+    { extensionsAll = Set.fromList $ parsedExtensionsAll defaultExtensions
+    , extensionsSafe = Nothing
+    }
+
+extsPlus :: Set OnOffExtension -> Extensions
+extsPlus s = exts
+    { extensionsAll = extensionsAll exts <> s
+    }
 
 sources :: IO (Map FilePath ByteString)
 sources = Map.traverseWithKey (\f _ -> BS.readFile f) resultMap

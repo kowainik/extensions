@@ -62,8 +62,8 @@ library
   hs-source-dirs:      src
   exposed-modules:     Extensions
                          Extensions.Cabal
-                         Extensions.OnOff
                          Extensions.Parser
+                         Extensions.Types
 
   build-depends:       bytestring ^>= 0.10
                      , Cabal >= 3.0 && < 3.3
