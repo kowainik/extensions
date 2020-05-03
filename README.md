@@ -1,5 +1,7 @@
 # extensions
 
+![Logo](https://user-images.githubusercontent.com/8126674/80925339-f09a4e80-8d86-11ea-81f4-fd1a6f50cd6b.png)
+
 [![GitHub CI](https://github.com/kowainik/extensions/workflows/CI/badge.svg)](https://github.com/kowainik/extensions/actions)
 [![Hackage](https://img.shields.io/hackage/v/extensions.svg?logo=haskell)](https://hackage.haskell.org/package/extensions)
 [![MPL-2.0 license](https://img.shields.io/badge/license-MPL--2.0-blue.svg)](LICENSE)
