@@ -5,16 +5,38 @@ Copyright: (c) 2020 Kowainik
 SPDX-License-Identifier: MPL-2.0
 Maintainer: Kowainik <xrom.xkov@gmail.com>
 
-Data types and functions to work with enabled/disabled 'Extension's.
+Data types and functions to work with different types of 'Extension's.
+
+@extensions@ library supports the following types of extensions:
+
+ +-------------------------------------------+----------------------------+
+ | @Haskell2010@ Default Enabled Extensions  | 'On' of 'OnOffExtension's  |
+ +-------------------------------------------+----------------------------+
+ | @Haskell2010@ Default Disabled Extensions | 'Off' of 'OnOffExtension's |
+ +-------------------------------------------+----------------------------+
+ | @SafeHaskell@ Extensions                  | 'SafeHaskellExtension's    |
+ +-------------------------------------------+----------------------------+
+
 -}
 
-module Extensions.OnOff
-    ( OnOffExtension (..)
+module Extensions.Types
+    ( Extensions (..)
+    , ParsedExtensions (..)
+    , CabalAndModuleExtensions (..)
+    , emptyExtensions
+    , emptyParsedExtensions
+
+      -- * Enabled/Disabled Haskell2010 Extensions
+    , OnOffExtension (..)
     , showOnOffExtension
     , readOnOffExtension
     , readExtension
     , mergeExtensions
+    , mergeAnyExtensions
     , default2010Extensions
+
+      -- * Safe Haskell Extensions
+    , SafeHaskellExtension (..)
     ) where
 
 import Control.Applicative ((<|>))
@@ -27,6 +49,49 @@ import Text.Read (readMaybe)
 import qualified Data.Set as Set
 import qualified Data.Text as Text
 
+
+{- | -}
+data Extensions = Extensions
+    { extensionsAll  :: !(Set OnOffExtension)
+    , extensionsSafe :: !(Maybe SafeHaskellExtension)
+    } deriving stock (Show, Eq)
+
+{- | -}
+data ParsedExtensions = ParsedExtensions
+    { parsedExtensionsAll  :: ![OnOffExtension]
+    , parsedExtensionsSafe :: !(Maybe SafeHaskellExtension)
+    } deriving stock (Show, Eq)
+
+-- | Stores extensions from @.cabal@ file and module separately.
+data CabalAndModuleExtensions = CabalAndModuleExtensions
+    { cabalExtensions  :: !ParsedExtensions
+    , moduleExtensions :: !ParsedExtensions
+    } deriving stock (Show, Eq)
+
+emptyExtensions :: Extensions
+emptyExtensions = Extensions
+    { extensionsAll = mempty
+    , extensionsSafe = Nothing
+    }
+
+emptyParsedExtensions :: ParsedExtensions
+emptyParsedExtensions = ParsedExtensions
+    { parsedExtensionsAll = []
+    , parsedExtensionsSafe = Nothing
+    }
+
+{- | Language extensions that are used by Safe Haskell to indicate safety of the
+code.
+
+To find out more, checkout the official documentation on @SafeHaskell@:
+
+ * [Safe Language Pragmas](https://downloads.haskell.org/~ghc/latest/docs/html/users_guide/safe_haskell.html#safe-haskell)
+-}
+data SafeHaskellExtension
+    = Unsafe
+    | Trustworthy
+    | Safe
+    deriving stock (Show, Read, Eq)
 
 -- | Represents enabled/disabled extensions.
 data OnOffExtension
@@ -93,6 +158,30 @@ mergeExtensions = foldl' handleExt Set.empty
     handleExt exts (Off e)
         | e `elem` default2010Extensions = Set.insert (Off e) exts
         | otherwise                      = Set.delete (On e) exts
+
+mergeAnyExtensions
+    :: ParsedExtensions  -- ^ Cabal parsed extensions.
+    -> ParsedExtensions  -- ^ Module parsed extensions.
+    -> Maybe Extensions
+mergeAnyExtensions (ParsedExtensions exts1 safe1) (ParsedExtensions exts2 safe2) = case (safe1, safe2) of
+    (Nothing, safe) -> Just $ Extensions
+        { extensionsAll = mergedExts
+        , extensionsSafe = safe
+        }
+    (safe, Nothing) -> Just $ Extensions
+        { extensionsAll = mergedExts
+        , extensionsSafe = safe
+        }
+    _  ->
+        if safe1 == safe2
+        then Just $ Extensions
+            { extensionsAll = mergedExts
+            , extensionsSafe = safe1
+            }
+        else Nothing
+  where
+    mergedExts :: Set OnOffExtension
+    mergedExts = mergeExtensions (exts1 <> exts2)
 
 -- | Default enabled extensions for @Haskell2010@
 default2010Extensions :: [Extension]

@@ -7,7 +7,7 @@ import Hedgehog (Gen, PropertyT, forAll, tripping)
 import Test.Hspec (Expectation, Spec, describe, it, shouldBe)
 import Test.Hspec.Hedgehog (hedgehog)
 
-import Extensions.OnOff (OnOffExtension (..), mergeExtensions, readOnOffExtension,
+import Extensions.Types (OnOffExtension (..), mergeExtensions, readOnOffExtension,
                          showOnOffExtension)
 
 import qualified Data.Set as Set

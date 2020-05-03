@@ -22,7 +22,10 @@ module Extensions.Cabal
 
 import Control.Exception (Exception, throwIO)
 import Data.ByteString (ByteString)
+import Data.Either (partitionEithers)
 import Data.Foldable (toList)
+import Data.List (nub)
+import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map.Strict (Map)
 import Data.Maybe (catMaybes, mapMaybe)
 import Data.Text (Text)
@@ -43,7 +46,7 @@ import GHC.LanguageExtensions.Type (Extension (..))
 import System.Directory (doesFileExist)
 import System.FilePath ((<.>), (</>))
 
-import Extensions.OnOff (OnOffExtension (..))
+import Extensions.Types (OnOffExtension (..), ParsedExtensions (..), SafeHaskellExtension (..))
 
 import qualified Data.ByteString as ByteString
 import qualified Data.Map.Strict as Map
@@ -58,6 +61,7 @@ data CabalException
     = CabalFileNotFound FilePath
     -- | Parsing errors in the @.cabal@ file.
     | CabalParseError Text
+    | CabalSafeExtensionsConflict (NonEmpty SafeHaskellExtension)
     deriving stock (Show, Eq)
     deriving anyclass (Exception)
 
@@ -68,7 +72,7 @@ __Throws__:
 
 * 'CabalException'
 -}
-parseCabalFileExtensions :: FilePath -> IO (Map FilePath [OnOffExtension])
+parseCabalFileExtensions :: FilePath -> IO (Map FilePath ParsedExtensions)
 parseCabalFileExtensions cabalPath = doesFileExist cabalPath >>= \hasCabalFile ->
     if hasCabalFile
     then ByteString.readFile cabalPath >>= parseCabalExtensions cabalPath
@@ -82,7 +86,7 @@ __Throws__:
 
 * 'CabalException'
 -}
-parseCabalExtensions :: FilePath -> ByteString -> IO (Map FilePath [OnOffExtension])
+parseCabalExtensions :: FilePath -> ByteString -> IO (Map FilePath ParsedExtensions)
 parseCabalExtensions path cabal = do
     let (_warnings, res) = runParseResult $ parseGenericPackageDescription cabal
     case res of
@@ -99,7 +103,7 @@ parseCabalExtensions path cabal = do
 {- | Extract Haskell Language extensions from a Cabal package
 description.
 -}
-extractCabalExtensions :: GenericPackageDescription -> IO (Map FilePath [OnOffExtension])
+extractCabalExtensions :: GenericPackageDescription -> IO (Map FilePath ParsedExtensions)
 extractCabalExtensions GenericPackageDescription{..} = mconcat
     [ foldMap    libraryToExtensions condLibrary
     , foldSndMap libraryToExtensions condSubLibraries
@@ -112,18 +116,18 @@ extractCabalExtensions GenericPackageDescription{..} = mconcat
     foldSndMap :: Monoid m => (a -> m) -> [(b, a)] -> m
     foldSndMap f = foldMap (f . snd)
 
-    libraryToExtensions :: CondTree var deps Library -> IO (Map FilePath [OnOffExtension])
+    libraryToExtensions :: CondTree var deps Library -> IO (Map FilePath ParsedExtensions)
     libraryToExtensions = condTreeToExtensions
         (map toModulePath . exposedModules)
         libBuildInfo
 
-    foreignToExtensions :: CondTree var deps ForeignLib -> IO (Map FilePath [OnOffExtension])
+    foreignToExtensions :: CondTree var deps ForeignLib -> IO (Map FilePath ParsedExtensions)
     foreignToExtensions = condTreeToExtensions (const []) foreignLibBuildInfo
 
-    exeToExtensions :: CondTree var deps Executable -> IO (Map FilePath [OnOffExtension])
+    exeToExtensions :: CondTree var deps Executable -> IO (Map FilePath ParsedExtensions)
     exeToExtensions = condTreeToExtensions (\Executable{..} -> [modulePath]) buildInfo
 
-    testToExtensions :: CondTree var deps TestSuite -> IO (Map FilePath [OnOffExtension])
+    testToExtensions :: CondTree var deps TestSuite -> IO (Map FilePath ParsedExtensions)
     testToExtensions = condTreeToExtensions testMainPath testBuildInfo
       where
         testMainPath :: TestSuite -> [FilePath]
@@ -132,7 +136,7 @@ extractCabalExtensions GenericPackageDescription{..} = mconcat
             TestSuiteLibV09 _ m    -> [toModulePath m]
             TestSuiteUnsupported _ -> []
 
-    benchToExtensions :: CondTree var deps Benchmark -> IO (Map FilePath [OnOffExtension])
+    benchToExtensions :: CondTree var deps Benchmark -> IO (Map FilePath ParsedExtensions)
     benchToExtensions = condTreeToExtensions benchMainPath benchmarkBuildInfo
       where
         benchMainPath :: Benchmark -> [FilePath]
@@ -147,38 +151,43 @@ condTreeToExtensions
     -- ^ Extract 'BuildInfo' from component
     -> CondTree var deps comp
     -- ^ Cabal stanza
-    -> IO (Map FilePath [OnOffExtension])
+    -> IO (Map FilePath ParsedExtensions)
 condTreeToExtensions extractModules extractBuildInfo condTree = do
     let comp = condTreeData condTree
     let buildInfo = extractBuildInfo comp
-    let extensions = mapMaybe cabalToGhcExtension $ defaultExtensions buildInfo
     let srcDirs = hsSourceDirs buildInfo
     let modules = extractModules comp ++
             map toModulePath (otherModules buildInfo ++ autogenModules buildInfo)
-    modulesToExtensions extensions srcDirs modules
+    let (safeExts, parsedExtensionsAll) = partitionEithers $ mapMaybe cabalToGhcExtension $ defaultExtensions buildInfo
+    parsedExtensionsSafe <- case nub safeExts of
+        []   -> pure Nothing
+        [x]  -> pure $ Just x
+        x:xs -> throwIO $ CabalSafeExtensionsConflict $ x :| xs
+
+    modulesToExtensions ParsedExtensions{..} srcDirs modules
 
 modulesToExtensions
-    :: [OnOffExtension]
+    :: ParsedExtensions
     -- ^ List of default extensions in the stanza
     -> [FilePath]
     -- ^ hs-src-dirs
     -> [FilePath]
     -- ^ All modules in the stanza
-    -> IO (Map FilePath [OnOffExtension])
+    -> IO (Map FilePath ParsedExtensions)
 modulesToExtensions extensions srcDirs = case srcDirs of
     [] -> findTopLevel
     _  -> findInDirs []
   where
-    mapFromPaths :: [FilePath] -> Map FilePath [OnOffExtension]
+    mapFromPaths :: [FilePath] -> Map FilePath ParsedExtensions
     mapFromPaths = Map.fromList . map (, extensions)
 
-    findInDirs :: [FilePath] -> [FilePath] -> IO (Map FilePath [OnOffExtension])
+    findInDirs :: [FilePath] -> [FilePath] -> IO (Map FilePath ParsedExtensions)
     findInDirs res [] = pure $ mapFromPaths res
     findInDirs res (m:ms) = findDir m srcDirs >>= \case
         Nothing         -> findInDirs res ms
         Just modulePath -> findInDirs (modulePath : res) ms
 
-    findTopLevel :: [FilePath] -> IO (Map FilePath [OnOffExtension])
+    findTopLevel :: [FilePath] -> IO (Map FilePath ParsedExtensions)
     findTopLevel modules = do
         mPaths <- traverse (withDir Nothing) modules
         pure $ mapFromPaths $ catMaybes mPaths
@@ -204,10 +213,12 @@ toModulePath :: ModuleName -> FilePath
 toModulePath moduleName = toFilePath moduleName <.> "hs"
 
 -- | Convert 'Cabal.Extension' to 'OnOffExtension'.
-cabalToGhcExtension :: Cabal.Extension -> Maybe OnOffExtension
+cabalToGhcExtension :: Cabal.Extension -> Maybe (Either SafeHaskellExtension OnOffExtension)
 cabalToGhcExtension = \case
-    Cabal.EnableExtension  extension -> On  <$> toGhcExtension extension
-    Cabal.DisableExtension extension -> Off <$> toGhcExtension extension
+    Cabal.EnableExtension  extension -> case (toGhcExtension extension, toSafeExtensions extension) of
+        (Nothing, safe) -> Left <$> safe
+        (ghc, _)        -> Right . On <$> ghc
+    Cabal.DisableExtension extension -> Right . Off <$> toGhcExtension extension
     Cabal.UnknownExtension _ -> Nothing
 
 -- | Convert 'Cabal.KnownExtension' to 'OnOffExtension'.
@@ -350,3 +361,10 @@ toGhcExtension = \case
     Cabal.RegularPatterns        -> Nothing
     Cabal.SafeImports            -> Nothing
     Cabal.NewQualifiedOperators  -> Nothing
+
+toSafeExtensions :: Cabal.KnownExtension -> Maybe SafeHaskellExtension
+toSafeExtensions = \case
+    Cabal.Safe        -> Just Safe
+    Cabal.Trustworthy -> Just Trustworthy
+    Cabal.Unsafe      -> Just Unsafe
+    _                 -> Nothing
