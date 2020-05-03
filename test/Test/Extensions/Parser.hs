@@ -9,7 +9,8 @@ import GHC.LanguageExtensions.Type (Extension (..))
 import Test.Hspec (Arg, Expectation, Spec, SpecWith, describe, it, shouldBe)
 
 import Extensions.Parser (ParseError (..), parseFile, parseSource)
-import Extensions.Types (OnOffExtension (..), ParsedExtensions (..), emptyParsedExtensions)
+import Extensions.Types (OnOffExtension (..), ParsedExtensions (..), SafeHaskellExtension (..),
+                         emptyParsedExtensions)
 
 
 parserSpec :: Spec
@@ -30,18 +31,41 @@ failSpec = describe "Expected test failures" $ do
     itShouldFail
         "{-# LANGUAGE DependentTypes #-}"
         (UnknownExtensions $ "DependentTypes" :| [])
-    itShouldFail ( unlines
+    itShouldFail (unlines
         [ "{-# LANGUAGE LambdaCase #-}"
         , "{-# LANGUAGE Cpp #-}"
-        ] )
+        ])
         (UnknownExtensions $ "Cpp" :| [])
+    itShouldFail (unlines
+        [ "{-# LANGUAGE Safe #-}"
+        , "{-# LANGUAGE Unsafe #-}"
+        ])
+        (SafeHaskellConflict $ Safe :| [Unsafe])
+    itShouldFail
+        "{-# LANGUAGE Safe, Trustworthy, Unsafe #-}"
+        (SafeHaskellConflict $ Safe :| [Trustworthy, Unsafe])
+    itShouldFail
+        "{-# LANGUAGE NoSafe #-}"
+        (UnknownExtensions $ "NoSafe" :| [])
 
 onlyExtensionsSpec :: Spec
 onlyExtensionsSpec = describe "Parsing only extensions without anything else" $ do
     itShouldParse "" []
     itShouldParse "{-# LANGUAGE TypeApplications #-}" [TypeApplications]
     itShouldParse "{-# LaNgUaGe CPP #-}" [Cpp]
-    itShouldParseOnOff "{-# LANGUAGE NoImplicitPrelude #-}" [Off ImplicitPrelude]
+
+    itShouldParseSafe "{-# LANGUAGE Safe #-}" Safe
+    itShouldParseSafe "{-# LANGUAGE Trustworthy #-}" Trustworthy
+    itShouldParseSafe "{-# LANGUAGE Unsafe #-}" Unsafe
+    itShouldParseSafe (unlines
+        [ "{-# LANGUAGE Safe #-}"
+        , "{-# LANGUAGE Safe #-}"
+        ])
+        Safe
+
+    itShouldParseOnOff
+        "{-# LANGUAGE NoImplicitPrelude #-}"
+        [Off ImplicitPrelude]
     itShouldParseOnOff
         "{-# LANGUAGE NondecreasingIndentation #-}"
         [On NondecreasingIndentation]
@@ -58,11 +82,6 @@ onlyExtensionsSpec = describe "Parsing only extensions without anything else" $ 
         , "{-# LANGUAGE GeneralisedNewtypeDeriving #-}"
         ])
         [GeneralizedNewtypeDeriving, GeneralizedNewtypeDeriving]
-    -- itShouldParse (unlines
-    --     [ "{-# LANGUAGE Safe #-}"
-    --     , "{-# LANGUAGE Trustworthy, Unsafe #-}"
-    --     ])
-    --     []
     itShouldParse (unlines
         [ "{-# LANGUAGE"
         , " TypeApplications,"
@@ -369,26 +388,36 @@ mixSpec = describe "Parsing combinations of different parts" $ do
         , "#-}"
         ])
         [TypeApplications, LambdaCase]
-    -- itShouldParse (unlines
-    --     [ "{-# LANGUAGE CPP #-}"
-    --     , "#if __GLASGOW_HASKELL__ >= 702"
-    --     , "{-# LANGUAGE Trustworthy #-}"
-    --     , "#endif"
-    --     , ""
-    --     , "-- |"
-    --     , "-- Module      : Data.ByteString.Base64"
-    --     ])
-    --     [Cpp]
-
+    itShouldParseExtensions (unlines
+        [ "{-# LANGUAGE CPP #-}"
+        , "#if __GLASGOW_HASKELL__ >= 702"
+        , "{-# LANGUAGE Trustworthy #-}"
+        , "#endif"
+        , ""
+        , "-- |"
+        , "-- Module      : Data.ByteString.Base64"
+        ])
+        ParsedExtensions
+            { parsedExtensionsAll  = [On Cpp]
+            , parsedExtensionsSafe = Just Trustworthy
+            }
 
 itShouldParse :: String -> [Extension] -> SpecWith (Arg Expectation)
 itShouldParse s = itShouldParseOnOff s . map On
 
 itShouldParseOnOff :: String -> [OnOffExtension] -> SpecWith (Arg Expectation)
-itShouldParseOnOff input res = it ("should parse:\n" <> indent input) $
-    parseSource (encodeUtf8 $ pack input) `shouldBe` Right emptyParsedExtensions
-        { parsedExtensionsAll = res
-        }
+itShouldParseOnOff input res = itShouldParseExtensions input $ emptyParsedExtensions
+   { parsedExtensionsAll = res
+   }
+
+itShouldParseSafe :: String -> SafeHaskellExtension -> SpecWith (Arg Expectation)
+itShouldParseSafe input res = itShouldParseExtensions input $ emptyParsedExtensions
+   { parsedExtensionsSafe = Just res
+   }
+
+itShouldParseExtensions :: String -> ParsedExtensions -> SpecWith (Arg Expectation)
+itShouldParseExtensions input res = it ("should parse:\n" <> indent input) $
+    parseSource (encodeUtf8 $ pack input) `shouldBe` Right res
 
 itShouldFail :: String -> ParseError -> SpecWith (Arg Expectation)
 itShouldFail input err = it ("should not parse:\n" <> indent input) $
