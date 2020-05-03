@@ -1,5 +1,4 @@
-{-# LANGUAGE CPP            #-}
-{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE CPP #-}
 
 {- |
 Copyright: (c) 2020 Kowainik
@@ -10,8 +9,7 @@ Functions to extract extensions from the @.cabal@ files.
 -}
 
 module Extensions.Cabal
-    ( CabalException (..)
-    , parseCabalFileExtensions
+    ( parseCabalFileExtensions
     , parseCabalExtensions
     , extractCabalExtensions
 
@@ -21,7 +19,7 @@ module Extensions.Cabal
     , toSafeExtensions
     ) where
 
-import Control.Exception (Exception, throwIO)
+import Control.Exception (throwIO)
 import Data.ByteString (ByteString)
 import Data.Either (partitionEithers)
 import Data.Foldable (toList)
@@ -47,25 +45,14 @@ import GHC.LanguageExtensions.Type (Extension (..))
 import System.Directory (doesFileExist)
 import System.FilePath ((<.>), (</>))
 
-import Extensions.Types (OnOffExtension (..), ParsedExtensions (..), SafeHaskellExtension (..))
+import Extensions.Types (CabalException (..), OnOffExtension (..), ParsedExtensions (..),
+                         SafeHaskellExtension (..))
 
 import qualified Data.ByteString as ByteString
 import qualified Data.Map.Strict as Map
 import qualified Data.Text as Text
 import qualified Language.Haskell.Extension as Cabal
 
-
-{- | Exception that gets thrown when working with @.cabal@ files.
--}
-data CabalException
-    -- | The @.cabal@ file is not found.
-    = CabalFileNotFound FilePath
-    -- | Parsing errors in the @.cabal@ file.
-    | CabalParseError Text
-    -- | Conflicting 'SafeHaskellExtension's in one scope.
-    | CabalSafeExtensionsConflict (NonEmpty SafeHaskellExtension)
-    deriving stock (Show, Eq)
-    deriving anyclass (Exception)
 
 {- | Parse default extensions from a @.cabal@ file under given
 'FilePath'.

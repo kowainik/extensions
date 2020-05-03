@@ -6,11 +6,20 @@ Maintainer: Kowainik <xrom.xkov@gmail.com>
 Parser for Haskell Modules to get all Haskell Language Extensions used.
 -}
 
-module Extensions.Parser
-       ( ParseError (..)
-       , parseFile
+module Extensions.Module
+       ( parseFile
        , parseSource
        , parseSourceWithPath
+
+         -- * Internal Parsers
+       , extensionsP
+       , singleExtensionsP
+       , extensionP
+       , languagePragmaP
+       , optionsGhcP
+       , pragmaP
+       , commentP
+       , cppP
        ) where
 
 import Data.ByteString (ByteString)
@@ -27,24 +36,11 @@ import Text.Parsec.ByteString (Parser)
 import Text.Parsec.Char (anyChar, endOfLine, letter, newline, space, spaces, string)
 import Text.Read (readMaybe)
 
-import Extensions.Types (OnOffExtension (..), ParsedExtensions (..), SafeHaskellExtension (..),
-                         readOnOffExtension)
+import Extensions.Types (ModuleParseError (..), OnOffExtension (..), ParsedExtensions (..),
+                         SafeHaskellExtension (..), readOnOffExtension)
 
 import qualified Data.ByteString as BS
-import qualified Text.Parsec as Parsec
 
-
--- | Error while parsing Haskell source file.
-data ParseError
-    -- | File parsing error.
-    = ParsecError Parsec.ParseError
-    -- | Uknown extensions were used in the module.
-    | UnknownExtensions (NonEmpty String)
-    -- | Conflicting 'SafeHaskellExtension's in one scope.
-    | SafeHaskellConflict (NonEmpty SafeHaskellExtension)
-    -- | Module file not found.
-    | FileNotFound FilePath
-    deriving stock (Show, Eq)
 
 -- | Internal data type for known and unknown extensions.
 data ParsedExtension
@@ -52,7 +48,7 @@ data ParsedExtension
     | SafeExtension SafeHaskellExtension
     | UnknownExtension String
 
-handleParsedExtensions :: [ParsedExtension] -> Either ParseError ParsedExtensions
+handleParsedExtensions :: [ParsedExtension] -> Either ModuleParseError ParsedExtensions
 handleParsedExtensions = handleResult . partitionEithers . map toEither
   where
     toEither :: ParsedExtension -> Either String (Either SafeHaskellExtension OnOffExtension)
@@ -63,7 +59,7 @@ handleParsedExtensions = handleResult . partitionEithers . map toEither
     -- Make sure that there is no conflicting 'SafeHaskellExtension's.
     handleResult
         :: ([String], [Either SafeHaskellExtension OnOffExtension])
-        -> Either ParseError ParsedExtensions
+        -> Either ModuleParseError ParsedExtensions
     handleResult (unknown, knownAndSafe) = case unknown of
         []   -> let (safe, known) = partitionEithers knownAndSafe in case nub safe of
             []   -> Right ParsedExtensions
@@ -74,13 +70,13 @@ handleParsedExtensions = handleResult . partitionEithers . map toEither
                 { parsedExtensionsAll = known
                 , parsedExtensionsSafe = Just s
                 }
-            s:ss -> Left $ SafeHaskellConflict $ s :| ss
+            s:ss -> Left $ ModuleSafeHaskellConflict $ s :| ss
         x:xs -> Left $ UnknownExtensions $ x :| xs
 
 {- | By the given file path, reads the file and returns 'ParsedExtensions', if
 parsing succeeds.
 -}
-parseFile :: FilePath -> IO (Either ParseError ParsedExtensions)
+parseFile :: FilePath -> IO (Either ModuleParseError ParsedExtensions)
 parseFile file = doesFileExist file >>= \hasFile ->
     if hasFile
     then parseSourceWithPath file <$> BS.readFile file
@@ -93,7 +89,7 @@ This function takes a path to a Haskell source file. The path is only used for
 error message. Pass empty string or use 'parseSource', if you don't have a path
 to a Haskell module.
 -}
-parseSourceWithPath :: FilePath -> ByteString -> Either ParseError ParsedExtensions
+parseSourceWithPath :: FilePath -> ByteString -> Either ModuleParseError ParsedExtensions
 parseSourceWithPath path src = case parse extensionsP path src of
     Left err         -> Left $ ParsecError err
     Right parsedExts -> handleParsedExtensions parsedExts
@@ -101,7 +97,7 @@ parseSourceWithPath path src = case parse extensionsP path src of
 {- | By the given file source content, returns 'ParsedExtensions', if parsing
 succeeds.
 -}
-parseSource :: ByteString -> Either ParseError ParsedExtensions
+parseSource :: ByteString -> Either ModuleParseError ParsedExtensions
 parseSource = parseSourceWithPath "SourceName"
 
 {- | The main parser of 'ParsedExtension'.
@@ -117,10 +113,10 @@ extensionsP = concat <$> manyTill
 {- | Single LANGUAGE pragma parser.
 
 @
- {-# LANGUAGE XXX
+ \{\-# LANGUAGE XXX
   , YYY ,
   ZZZ
- #-}
+ #\-\}
 @
 -}
 singleExtensionsP :: Parser [ParsedExtension]
@@ -140,12 +136,12 @@ extensionP = (spaces *> many1 alphaNum <* spaces) <&> \txt ->
             Just ext -> SafeExtension ext
             Nothing  -> UnknownExtension txt
 
-{- | Parser for standard language pragma keywords: @{-# LANGUAGE XXX #-}@
+{- | Parser for standard language pragma keywords: @\{\-\# LANGUAGE XXX \#\-\}@
 -}
 languagePragmaP :: Parser a -> Parser a
 languagePragmaP = pragmaP $ istringP "LANGUAGE"
 
-{- | Parser for GHC options pragma keywords: @{-# OPTIONS_GHC YYY #-}@
+{- | Parser for GHC options pragma keywords: @\{\-\# OPTIONS_GHC YYY \#\-\}@
 -}
 optionsGhcP :: Parser [a]
 optionsGhcP = [] <$ optionsGhcPragmaP (many1 ghcOptionP)
@@ -172,6 +168,20 @@ commaSep :: Parser a -> Parser [a]
 commaSep p = p `sepBy1` (try $ newLines *> char ',' <* newLines)
 
 {- | Haskell comment parser.
+Supports both single-line comments:
+
+  @
+  -- I am a single comment
+  @
+
+and multi-line comments:
+
+  @
+  \{\- I
+  AM
+  MULTILINE
+  \-\}
+  @
 -}
 commentP :: Parser [a]
 commentP = newLines *> (try singleLineCommentP <|> try multiLineCommentP) <* newLines
@@ -187,7 +197,7 @@ commentP = newLines *> (try singleLineCommentP <|> try multiLineCommentP) <* new
 {- | CPP syntax parser.
 
   @
-  #if __GLASGOW_HASKELL__ < 810
+  #if \_\_GLASGOW_HASKELL\_\_ < 810
   -- Could be more Language pragmas that should be parsed
   #endif
   @

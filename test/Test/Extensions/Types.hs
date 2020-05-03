@@ -1,4 +1,4 @@
-module Test.Extensions.OnOff
+module Test.Extensions.Types
     ( onOffSpec
     ) where
 

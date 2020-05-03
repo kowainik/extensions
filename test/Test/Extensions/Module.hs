@@ -1,5 +1,5 @@
-module Test.Extensions.Parser
-    ( parserSpec
+module Test.Extensions.Module
+    ( moduleParserSpec
     ) where
 
 import Data.List.NonEmpty (NonEmpty (..))
@@ -8,13 +8,13 @@ import Data.Text.Encoding (encodeUtf8)
 import GHC.LanguageExtensions.Type (Extension (..))
 import Test.Hspec (Arg, Expectation, Spec, SpecWith, describe, it, shouldBe)
 
-import Extensions.Parser (ParseError (..), parseFile, parseSource)
-import Extensions.Types (OnOffExtension (..), ParsedExtensions (..), SafeHaskellExtension (..),
-                         emptyParsedExtensions)
+import Extensions.Module (parseFile, parseSource)
+import Extensions.Types (ModuleParseError (..), OnOffExtension (..), ParsedExtensions (..),
+                         SafeHaskellExtension (..), emptyParsedExtensions)
 
 
-parserSpec :: Spec
-parserSpec = describe "Haskell file Extensions Parser" $ do
+moduleParserSpec :: Spec
+moduleParserSpec = describe "Haskell file Extensions Parser" $ do
     failSpec
     onlyExtensionsSpec
     singleLineCommentsSpec
@@ -40,10 +40,10 @@ failSpec = describe "Expected test failures" $ do
         [ "{-# LANGUAGE Safe #-}"
         , "{-# LANGUAGE Unsafe #-}"
         ])
-        (SafeHaskellConflict $ Safe :| [Unsafe])
+        (ModuleSafeHaskellConflict $ Safe :| [Unsafe])
     itShouldFail
         "{-# LANGUAGE Safe, Trustworthy, Unsafe #-}"
-        (SafeHaskellConflict $ Safe :| [Trustworthy, Unsafe])
+        (ModuleSafeHaskellConflict $ Safe :| [Trustworthy, Unsafe])
     itShouldFail
         "{-# LANGUAGE NoSafe #-}"
         (UnknownExtensions $ "NoSafe" :| [])
@@ -419,7 +419,7 @@ itShouldParseExtensions :: String -> ParsedExtensions -> SpecWith (Arg Expectati
 itShouldParseExtensions input res = it ("should parse:\n" <> indent input) $
     parseSource (encodeUtf8 $ pack input) `shouldBe` Right res
 
-itShouldFail :: String -> ParseError -> SpecWith (Arg Expectation)
+itShouldFail :: String -> ModuleParseError -> SpecWith (Arg Expectation)
 itShouldFail input err = it ("should not parse:\n" <> indent input) $
     parseSource (encodeUtf8 $ pack input) `shouldBe` Left err
 
