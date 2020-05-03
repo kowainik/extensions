@@ -9,9 +9,9 @@ import Data.Map.Strict (Map)
 import GHC.LanguageExtensions.Type (Extension (..))
 import Test.Hspec (Spec, describe, it, shouldBe, shouldThrow)
 
-import Extensions.Cabal (CabalException (..), parseCabalExtensions, parseCabalFileExtensions)
-import Extensions.Types (OnOffExtension (..), ParsedExtensions (..), SafeHaskellExtension (..),
-                         emptyParsedExtensions)
+import Extensions.Cabal (parseCabalExtensions, parseCabalFileExtensions)
+import Extensions.Types (CabalException (..), OnOffExtension (..), ParsedExtensions (..),
+                         SafeHaskellExtension (..), emptyParsedExtensions)
 
 import qualified Data.Map.Strict as Map
 import qualified Data.Text as Text
@@ -90,12 +90,13 @@ cabalSpec = describe "Cabal file Extensions Parser" $ do
         , "app/Main.hs"                    `to` defaultExtensions
         , "src/Extensions.hs"              `to` defaultExtensions
         , "src/Extensions/Cabal.hs"        `to` defaultExtensions
-        , "src/Extensions/Parser.hs"       `to` defaultExtensions
+        , "src/Extensions/Module.hs"       `to` defaultExtensions
+        , "src/Extensions/Package.hs"      `to` defaultExtensions
         , "src/Extensions/Types.hs"        `to` defaultExtensions
         , "test/Test/Extensions.hs"        `to` defaultExtensions
         , "test/Test/Extensions/Cabal.hs"  `to` defaultExtensions
-        , "test/Test/Extensions/OnOff.hs"  `to` defaultExtensions
-        , "test/Test/Extensions/Parser.hs" `to` defaultExtensions
+        , "test/Test/Extensions/Module.hs" `to` defaultExtensions
+        , "test/Test/Extensions/Types.hs"  `to` defaultExtensions
         , "test/Spec.hs"                   `to` defaultExtensions
         ]
 

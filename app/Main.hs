@@ -12,10 +12,10 @@ import System.FilePath (takeExtension, (</>))
 
 import Cli (ExtensionsArgs (..), Toggle (..), runExtensionsCli)
 import Extensions (ExtensionsResult, getModuleExtentions, getPackageExtentions)
-import Extensions.Cabal (CabalException, parseCabalFileExtensions)
-import Extensions.Parser (parseFile)
-import Extensions.Types (Extensions (..), OnOffExtension (..), ParsedExtensions (..),
-                         SafeHaskellExtension, showOnOffExtension)
+import Extensions.Cabal (parseCabalFileExtensions)
+import Extensions.Module (parseFile)
+import Extensions.Types (CabalException, Extensions (..), OnOffExtension (..),
+                         ParsedExtensions (..), SafeHaskellExtension, showOnOffExtension)
 
 import qualified Data.Map as Map
 import qualified Data.Text as Text

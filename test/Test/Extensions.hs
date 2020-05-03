@@ -9,9 +9,10 @@ import Data.Set (Set)
 import GHC.LanguageExtensions.Type (Extension (..))
 import Test.Hspec (Spec, describe, it, shouldBe)
 
-import Extensions (ExtensionsError (..), ExtensionsResult, getModuleExtentions,
-                   getModuleExtentionsBySource, getPackageExtentions, getPackageExtentionsBySources)
-import Extensions.Types (Extensions (..), OnOffExtension (..), ParsedExtensions (..))
+import Extensions (getModuleExtentions, getModuleExtentionsBySource, getPackageExtentions,
+                   getPackageExtentionsBySources)
+import Extensions.Types (Extensions (..), ExtensionsError (..), ExtensionsResult,
+                         OnOffExtension (..), ParsedExtensions (..))
 import Test.Extensions.Cabal (defaultExtensions)
 
 import qualified Data.ByteString as BS
@@ -56,13 +57,15 @@ resultMap = Map.fromList
     , "app/Main.hs"                    `to` Right exts
     , "src/Extensions.hs"              `to` Right exts
     , "src/Extensions/Cabal.hs"        `to` Right
-        (extsPlus $ Set.fromList [On Cpp, On DeriveAnyClass] )
-    , "src/Extensions/Parser.hs"       `to` Right exts
-    , "src/Extensions/Types.hs"        `to` Right exts
+        (extsPlus $ Set.singleton $ On Cpp )
+    , "src/Extensions/Module.hs"       `to` Right exts
+    , "src/Extensions/Package.hs"      `to` Right exts
+    , "src/Extensions/Types.hs"        `to` Right
+        (extsPlus $ Set.singleton $ On DeriveAnyClass )
     , "test/Test/Extensions.hs"        `to` Right exts
     , "test/Test/Extensions/Cabal.hs"  `to` Right exts
-    , "test/Test/Extensions/OnOff.hs"  `to` Right exts
-    , "test/Test/Extensions/Parser.hs" `to` Right exts
+    , "test/Test/Extensions/Module.hs" `to` Right exts
+    , "test/Test/Extensions/Types.hs"  `to` Right exts
     , "test/Spec.hs"                   `to` Right exts
     ]
   where

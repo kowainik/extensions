@@ -1,5 +1,7 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
+{-# LANGUAGE DeriveAnyClass #-}
+
 {- |
 Copyright: (c) 2020 Kowainik
 SPDX-License-Identifier: MPL-2.0
@@ -23,6 +25,14 @@ module Extensions.Types
     ( Extensions (..)
     , ParsedExtensions (..)
     , CabalAndModuleExtensions (..)
+    , ExtensionsResult
+
+      -- * Errors
+    , ExtensionsError (..)
+    , CabalException (..)
+    , ModuleParseError (..)
+
+      -- ** Defaults / empty data types
     , emptyExtensions
     , emptyParsedExtensions
 
@@ -40,7 +50,9 @@ module Extensions.Types
     ) where
 
 import Control.Applicative ((<|>))
+import Control.Exception (Exception)
 import Data.Foldable (foldl')
+import Data.List.NonEmpty (NonEmpty (..))
 import Data.Set (Set)
 import Data.Text (Text)
 import GHC.LanguageExtensions.Type (Extension (..))
@@ -48,6 +60,7 @@ import Text.Read (readMaybe)
 
 import qualified Data.Set as Set
 import qualified Data.Text as Text
+import qualified Text.Parsec as Parsec
 
 
 {- | Main returned data type that includes merged 'OnOffExtension's and possibly
@@ -74,6 +87,48 @@ data CabalAndModuleExtensions = CabalAndModuleExtensions
     { cabalExtensions  :: !ParsedExtensions
     , moduleExtensions :: !ParsedExtensions
     } deriving stock (Show, Eq)
+
+-- | Type alias for the result of extensions analysis.
+type ExtensionsResult = Either ExtensionsError Extensions
+
+-- | Represents possible errors during the work of extensions analyser.
+data ExtensionsError
+    -- | Parse error during module extensions parsing.
+    = ModuleParseError FilePath ModuleParseError
+    -- | Error during @.cabal@ file reading/parsing.
+    | CabalError CabalException
+    -- | File is in cabal file, but the source file is not provided where requested.
+    | SourceNotFound FilePath
+    -- | Source file is provided, but module is not in cabal file.
+    | NotCabalModule FilePath
+    -- | Conflicting 'SafeHaskellExtension's in one scope.
+    | SafeHaskellConflict (NonEmpty SafeHaskellExtension)
+    deriving stock (Show, Eq)
+
+{- | Exception that gets thrown when working with @.cabal@ files.
+-}
+data CabalException
+    -- | The @.cabal@ file is not found.
+    = CabalFileNotFound FilePath
+    -- | Parsing errors in the @.cabal@ file.
+    | CabalParseError Text
+    -- | Conflicting 'SafeHaskellExtension's in one scope.
+    | CabalSafeExtensionsConflict (NonEmpty SafeHaskellExtension)
+    deriving stock (Show, Eq)
+    deriving anyclass (Exception)
+
+-- | Error while parsing Haskell source file.
+data ModuleParseError
+    -- | File parsing error.
+    = ParsecError Parsec.ParseError
+    -- | Uknown extensions were used in the module.
+    | UnknownExtensions (NonEmpty String)
+    -- | Conflicting 'SafeHaskellExtension's in one scope.
+    | ModuleSafeHaskellConflict (NonEmpty SafeHaskellExtension)
+    -- | Module file not found.
+    | FileNotFound FilePath
+    deriving stock (Show, Eq)
+
 
 -- | Empty 'Extensions' with no specified 'SafeHaskellExtension'.
 emptyExtensions :: Extensions

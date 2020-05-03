@@ -62,7 +62,8 @@ library
   hs-source-dirs:      src
   exposed-modules:     Extensions
                          Extensions.Cabal
-                         Extensions.Parser
+                         Extensions.Module
+                         Extensions.Package
                          Extensions.Types
 
   build-depends:       bytestring ^>= 0.10
@@ -95,8 +96,8 @@ test-suite extensions-test
   main-is:             Spec.hs
   other-modules:       Test.Extensions
                        Test.Extensions.Cabal
-                       Test.Extensions.OnOff
-                       Test.Extensions.Parser
+                       Test.Extensions.Module
+                       Test.Extensions.Types
   build-depends:       extensions
                      , bytestring
                      , containers
