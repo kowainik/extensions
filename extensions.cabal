@@ -2,12 +2,13 @@ cabal-version:       2.4
 name:                extensions
 version:             0.0.0.0
 synopsis:            Parse Haskell Language Extensions
-description:         Parse Haskell Language Extensions
+description:         Parse Haskell Language Extensions.
+                     See [README.md](https://github.com/kowainik/extensions#extensions) for more details.
 homepage:            https://github.com/kowainik/extensions
 bug-reports:         https://github.com/kowainik/extensions/issues
 license:             MPL-2.0
 license-file:        LICENSE
-author:              Kowainik
+author:              Veronika Romashkina, Dmitrii Kovanikov
 maintainer:          Kowainik <xrom.xkov@gmail.com>
 copyright:           2020 Kowainik
 category:            GHC, Parsing, Haskell

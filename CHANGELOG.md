@@ -3,7 +3,7 @@
 `extensions` uses [PVP Versioning][1].
 The changelog is available [on GitHub][2].
 
-## 0.0.0.0
+## 0.0.0.0 — May the 4th, 2020 💪
 
 * Initially created.
 
