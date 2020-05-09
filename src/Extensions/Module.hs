@@ -122,9 +122,9 @@ extensionsP = concat <$> manyTill
 singleExtensionsP :: Parser [ParsedExtension]
 singleExtensionsP =
     languagePragmaP (commaSep (nonExtP *> extensionP <* nonExtP) <* spaces)
-  where
-    nonExtP :: Parser ()
-    nonExtP = () <$ many (try cppP <|> try commentP)
+
+nonExtP :: Parser ()
+nonExtP = () <$ many (try cppP <|> try commentP)
 
 {- | Parses all known and unknown 'OnOffExtension's or 'SafeHaskellExtension's.
 -}
@@ -161,7 +161,7 @@ istringP = traverse_ $ \c -> oneOf [toUpper c, toLower c]
 pragmaP :: Parser () -> Parser a -> Parser a
 pragmaP pragmaNameP p = between
     (string "{-#") (string "#-}" <* newLines)
-    (newLines *> pragmaNameP *> newLines *> p <* newLines)
+    (newLines *> nonExtP *> pragmaNameP *> newLines *> p <* newLines)
 
 -- | Comma separated parser. Newlines and spaces are allowed around comma.
 commaSep :: Parser a -> Parser [a]
