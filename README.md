@@ -12,7 +12,7 @@ combine together `default-extensions` and per-module extensions.
 
 ## Goals
 
-The `extensions` library provides a lighweight way to get Haskell
+The `extensions` library provides a lightweight way to get Haskell
 LANGUAGE pragmas for Haskell modules. It has the following goals:
 
 1. Be **lightweight**. Dependency footprint is extremely small,
