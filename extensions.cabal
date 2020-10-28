@@ -83,7 +83,7 @@ executable extensions
   other-modules:       Cli
   build-depends:       extensions
                      , base
-                     , colourista ^>= 0.1.0.0
+                     , colourista >= 0.1 && < 0.3
                      , containers
                      , directory
                      , filepath
