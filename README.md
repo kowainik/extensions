@@ -82,10 +82,16 @@ To use `extensions` as a CLI tool, you need to install it either with Cabal
 cabal install extensions
 ```
 
-or Stack
+Stack
 
 ```
 stack install extensions
+```
+
+or the nix package manager which allows you to use it ad-hoc via `nix-shell -p haskellPackages.extensions --run extensions` or to install via
+
+```
+nix-env -iA nixpkgs.haskellPackages.extensions
 ```
 
 The tool can be used to inspect language extensions in your Haskell
