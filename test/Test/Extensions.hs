@@ -53,15 +53,15 @@ getExtensionsSpec = describe "Get Extensions" $ do
 resultMap :: Map FilePath ExtensionsResult
 resultMap = Map.fromList
     [ "app/Cli.hs"                     `to` Right
-        (extsPlus $ Set.singleton (On ApplicativeDo))
+        (extsPlus $ Set.singleton $ On ApplicativeDo)
     , "app/Main.hs"                    `to` Right exts
     , "src/Extensions.hs"              `to` Right exts
     , "src/Extensions/Cabal.hs"        `to` Right
-        (extsPlus $ Set.singleton $ On Cpp )
+        (extsPlus $ Set.singleton $ On Cpp)
     , "src/Extensions/Module.hs"       `to` Right exts
     , "src/Extensions/Package.hs"      `to` Right exts
     , "src/Extensions/Types.hs"        `to` Right
-        (extsPlus $ Set.singleton $ On DeriveAnyClass )
+        (extsPlus $ Set.fromList [On Cpp, On DeriveAnyClass])
     , "test/Test/Extensions.hs"        `to` Right exts
     , "test/Test/Extensions/Cabal.hs"  `to` Right exts
     , "test/Test/Extensions/Module.hs" `to` Right exts

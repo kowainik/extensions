@@ -28,7 +28,7 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map.Strict (Map)
 import Data.Maybe (catMaybes, mapMaybe)
 import Data.Text (Text)
-import Distribution.ModuleName (ModuleName (..), toFilePath)
+import Distribution.ModuleName (ModuleName, toFilePath)
 import Distribution.PackageDescription.Parsec (parseGenericPackageDescription, runParseResult)
 import Distribution.Parsec.Error (PError, showPError)
 import Distribution.Types.Benchmark (Benchmark (..))
@@ -335,6 +335,11 @@ toGhcExtension = \case
     Cabal.ImportQualifiedPost      -> Just ImportQualifiedPost
     Cabal.StandaloneKindSignatures -> Just StandaloneKindSignatures
     Cabal.UnliftedNewtypes         -> Just UnliftedNewtypes
+#endif
+#if __GLASGOW_HASKELL__ >= 900
+    Cabal.LexicalNegation -> Just LexicalNegation
+    Cabal.QualifiedDo     -> Just QualifiedDo
+    Cabal.LinearTypes     -> Just LinearTypes
 #endif
     -- GHC extensions, parsed by both Cabal and GHC, but don't have an Extension constructor
     Cabal.Safe                   -> Nothing
