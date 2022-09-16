@@ -1,6 +1,7 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 {-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE CPP #-}
 
 {- |
 Copyright: (c) 2020 Kowainik
@@ -267,4 +268,6 @@ default2010Extensions =
     ]
 
 deriving stock instance Read Extension
-deriving stock instance Ord  Extension
+#if __GLASGOW_HASKELL__ < 900
+deriving stock instance Ord Extension
+#endif
