@@ -265,6 +265,9 @@ default2010Extensions =
     , PatternGuards
     , DoAndIfThenElse
     , RelaxedPolyRec
+#if __GLASGOW_HASKELL__ >= 810
+    , CUSKs
+#endif
     ]
 
 deriving stock instance Read Extension
