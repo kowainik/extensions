@@ -19,6 +19,11 @@ tested-with:         GHC == 8.8.4
                      GHC == 8.10.7
                      GHC == 9.0.2
 
+flag executable
+  description: Build the extensions executable
+  default: True
+  manual: True
+
 source-repository head
   type:                git
   location:            https://github.com/kowainik/extensions.git
@@ -79,6 +84,8 @@ library
 
 executable extensions
   import:              common-options
+  if !flag(executable)
+    buildable: False
   hs-source-dirs:      app
   main-is:             Main.hs
   other-modules:       Cli
