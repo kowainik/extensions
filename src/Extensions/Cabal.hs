@@ -53,6 +53,10 @@ import qualified Data.Map.Strict as Map
 import qualified Data.Text as Text
 import qualified Language.Haskell.Extension as Cabal
 
+#if MIN_VERSION_Cabal(3,6,0)
+import Distribution.Utils.Path (getSymbolicPath)
+#endif
+
 
 {- | Parse default extensions from a @.cabal@ file under given
 'FilePath'.
@@ -144,7 +148,11 @@ condTreeToExtensions
 condTreeToExtensions extractModules extractBuildInfo condTree = do
     let comp = condTreeData condTree
     let buildInfo = extractBuildInfo comp
+#if MIN_VERSION_Cabal(3,6,0)
+    let srcDirs = getSymbolicPath <$> hsSourceDirs buildInfo
+#else
     let srcDirs = hsSourceDirs buildInfo
+#endif
     let modules = extractModules comp ++
             map toModulePath (otherModules buildInfo ++ autogenModules buildInfo)
     let (safeExts, parsedExtensionsAll) = partitionEithers $ mapMaybe cabalToGhcExtension $ defaultExtensions buildInfo
