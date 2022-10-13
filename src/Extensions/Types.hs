@@ -1,10 +1,10 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
+{-# LANGUAGE CPP            #-}
 {-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE CPP #-}
 
 {- |
-Copyright: (c) 2020 Kowainik
+Copyright: (c) 2020-2022 Kowainik
 SPDX-License-Identifier: MPL-2.0
 Maintainer: Kowainik <xrom.xkov@gmail.com>
 
@@ -173,7 +173,9 @@ showOnOffExtension = \case
     showExtension :: Extension -> Text
     showExtension = \case
         Cpp        -> "CPP"
+#if !MIN_VERSION_ghc_boot_th(9,4,1)
         RecordPuns -> "NamedFieldPuns"
+#endif
         ext        -> Text.pack $ show ext
 
 {- | Parse 'OnOffExtension' from a string that specifies extension.
@@ -193,12 +195,14 @@ doesn't always work since some extensions are named differently.
 readExtension :: String -> Maybe Extension
 readExtension = \case
     "GeneralisedNewtypeDeriving" -> Just GeneralizedNewtypeDeriving
-    "NamedFieldPuns" -> Just RecordPuns
-    "RecordPuns" -> Nothing
-    "Rank2Types" -> Just RankNTypes
-    "CPP" -> Just Cpp
-    "Cpp" -> Nothing
-    s -> readMaybe s
+#if !MIN_VERSION_ghc_boot_th(9,4,1)
+    "NamedFieldPuns"             -> Just RecordPuns
+    "RecordPuns"                 -> Nothing
+#endif
+    "Rank2Types"                 -> Just RankNTypes
+    "CPP"                        -> Just Cpp
+    "Cpp"                        -> Nothing
+    s                            -> readMaybe s
 
 {- | Take accumulated 'OnOffExtension's, and merge them into one 'Set',
 excluding enabling of 'default2010Extensions'.

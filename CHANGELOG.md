@@ -3,8 +3,14 @@
 `extensions` uses [PVP Versioning][1].
 The changelog is available [on GitHub][2].
 
-## Unreleased
 
+## 0.0.1.0 — Oct 13, 2022
+
+* [#74](https://github.com/kowainik/extensions/issues/74):
+  Support GHC-9.2.
+* [#83](https://github.com/kowainik/extensions/issues/83):
+  Support GHC-9.4.
+* Support `Cabal` `3.4`, `3.6` and `3.8`.
 * [#70](https://github.com/kowainik/extensions/issues/70):
   Parse empty lines and spaces in before comments and pragmas in the beginning
   of the file.
