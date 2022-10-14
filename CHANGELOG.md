@@ -4,7 +4,7 @@
 The changelog is available [on GitHub][2].
 
 
-## 0.0.1.0 — Oct 13, 2022
+## 0.1.0.0 — Oct 14, 2022
 
 * [#74](https://github.com/kowainik/extensions/issues/74):
   Support GHC-9.2.
