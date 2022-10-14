@@ -177,6 +177,22 @@ multiLineCommentsSpec = describe "Parsing extensions with multi-line comments" $
         "{- Haskelll -} {-# {- extension -} LANGUAGE {- called -} LambdaCase {- and nothing else -} #-} {- matters -}"
         [LambdaCase]
     itShouldParse (unlines
+        [ ""
+        , "{- |"
+        , "Hello"
+        , "-}"
+        , "{-# LANGUAGE CPP #-}"
+        ])
+        [Cpp]
+    itShouldParse (unlines
+        [ ""
+        , "-- | Hey"
+        , "-- Hello"
+        , "--"
+        , "module Abc"
+        ])
+        []
+    itShouldParse (unlines
         [ "{-# LANGUAGE   TypeApplications  , LambdaCase   #-}"
         , "{- hello -}"
         ])
