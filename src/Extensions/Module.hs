@@ -31,7 +31,7 @@ import Data.List (nub)
 import Data.List.NonEmpty (NonEmpty (..))
 import System.Directory (doesFileExist)
 import Text.Parsec (alphaNum, between, char, eof, many, many1, manyTill, noneOf, oneOf, parse,
-                    sepBy1, try, (<|>))
+                    sepBy1, skipMany, try, (<|>))
 import Text.Parsec.ByteString (Parser)
 import Text.Parsec.Char (anyChar, endOfLine, letter, newline, space, spaces, string)
 import Text.Read (readMaybe)
@@ -106,9 +106,12 @@ It parses language pragmas or comments until end of file or the first line with
 the function/import/module name.
 -}
 extensionsP :: Parser [ParsedExtension]
-extensionsP = concat <$> manyTill
-    (try singleExtensionsP <|> try optionsGhcP <|> try commentP <|> try cppP)
-    (eof <|> (() <$ manyTill endOfLine letter))
+extensionsP = concat <$>
+    ( newLines *>
+      manyTill
+        (try singleExtensionsP <|> try optionsGhcP <|> try commentP <|> try cppP)
+        (eof <|> (() <$ manyTill endOfLine letter))
+    )
 
 {- | Single LANGUAGE pragma parser.
 
@@ -124,7 +127,7 @@ singleExtensionsP =
     languagePragmaP (commaSep (nonExtP *> extensionP <* nonExtP) <* spaces)
 
 nonExtP :: Parser ()
-nonExtP = () <$ many (try cppP <|> try commentP)
+nonExtP = skipMany (try cppP <|> try commentP)
 
 {- | Parses all known and unknown 'OnOffExtension's or 'SafeHaskellExtension's.
 -}
@@ -165,7 +168,7 @@ pragmaP pragmaNameP p = between
 
 -- | Comma separated parser. Newlines and spaces are allowed around comma.
 commaSep :: Parser a -> Parser [a]
-commaSep p = p `sepBy1` (try $ newLines *> char ',' <* newLines)
+commaSep p = p `sepBy1` try (newLines *> char ',' <* newLines)
 
 {- | Haskell comment parser.
 Supports both single-line comments:
@@ -211,4 +214,4 @@ cppP =
 
 -- | Any combination of spaces and newlines.
 newLines :: Parser ()
-newLines = () <$ many (space <|> endOfLine)
+newLines = skipMany (space <|> endOfLine)
