@@ -1,7 +1,7 @@
 {-# LANGUAGE CPP #-}
 
 {- |
-Copyright: (c) 2020 Kowainik
+Copyright: (c) 2020-2022 Kowainik
 SPDX-License-Identifier: MPL-2.0
 Maintainer: Kowainik <xrom.xkov@gmail.com>
 
@@ -41,6 +41,9 @@ import Distribution.Types.GenericPackageDescription (GenericPackageDescription (
 import Distribution.Types.Library (Library (..))
 import Distribution.Types.TestSuite (TestSuite (..))
 import Distribution.Types.TestSuiteInterface (TestSuiteInterface (..))
+#if MIN_VERSION_Cabal(3,6,0)
+import Distribution.Utils.Path (getSymbolicPath)
+#endif
 import GHC.LanguageExtensions.Type (Extension (..))
 import System.Directory (doesFileExist)
 import System.FilePath ((<.>), (</>))
@@ -144,7 +147,11 @@ condTreeToExtensions
 condTreeToExtensions extractModules extractBuildInfo condTree = do
     let comp = condTreeData condTree
     let buildInfo = extractBuildInfo comp
+#if MIN_VERSION_Cabal(3,6,0)
+    let srcDirs = getSymbolicPath <$> hsSourceDirs buildInfo
+#else
     let srcDirs = hsSourceDirs buildInfo
+#endif
     let modules = extractModules comp ++
             map toModulePath (otherModules buildInfo ++ autogenModules buildInfo)
     let (safeExts, parsedExtensionsAll) = partitionEithers $ mapMaybe cabalToGhcExtension $ defaultExtensions buildInfo
@@ -213,148 +220,168 @@ cabalToGhcExtension = \case
 -- | Convert 'Cabal.KnownExtension' to 'OnOffExtension'.
 toGhcExtension :: Cabal.KnownExtension -> Maybe Extension
 toGhcExtension = \case
-    Cabal.OverlappingInstances       -> Just OverlappingInstances
-    Cabal.UndecidableInstances       -> Just UndecidableInstances
-    Cabal.IncoherentInstances        -> Just IncoherentInstances
-    Cabal.DoRec                      -> Just RecursiveDo
-    Cabal.RecursiveDo                -> Just RecursiveDo
-    Cabal.ParallelListComp           -> Just ParallelListComp
-    Cabal.MultiParamTypeClasses      -> Just MultiParamTypeClasses
-    Cabal.MonomorphismRestriction    -> Just MonomorphismRestriction
-    Cabal.FunctionalDependencies     -> Just FunctionalDependencies
-    Cabal.Rank2Types                 -> Just RankNTypes
-    Cabal.RankNTypes                 -> Just RankNTypes
-    Cabal.PolymorphicComponents      -> Just RankNTypes
-    Cabal.ExistentialQuantification  -> Just ExistentialQuantification
-    Cabal.ScopedTypeVariables        -> Just ScopedTypeVariables
-    Cabal.PatternSignatures          -> Just ScopedTypeVariables
-    Cabal.ImplicitParams             -> Just ImplicitParams
-    Cabal.FlexibleContexts           -> Just FlexibleContexts
-    Cabal.FlexibleInstances          -> Just FlexibleInstances
-    Cabal.EmptyDataDecls             -> Just EmptyDataDecls
-    Cabal.CPP                        -> Just Cpp
-    Cabal.KindSignatures             -> Just KindSignatures
-    Cabal.BangPatterns               -> Just BangPatterns
-    Cabal.TypeSynonymInstances       -> Just TypeSynonymInstances
-    Cabal.TemplateHaskell            -> Just TemplateHaskell
-    Cabal.ForeignFunctionInterface   -> Just ForeignFunctionInterface
-    Cabal.Arrows                     -> Just Arrows
-    Cabal.ImplicitPrelude            -> Just ImplicitPrelude
-    Cabal.PatternGuards              -> Just PatternGuards
-    Cabal.GeneralizedNewtypeDeriving -> Just GeneralizedNewtypeDeriving
-    Cabal.GeneralisedNewtypeDeriving -> Just GeneralizedNewtypeDeriving
-    Cabal.MagicHash                  -> Just MagicHash
-    Cabal.TypeFamilies               -> Just TypeFamilies
-    Cabal.StandaloneDeriving         -> Just StandaloneDeriving
-    Cabal.UnicodeSyntax              -> Just UnicodeSyntax
-    Cabal.UnliftedFFITypes           -> Just UnliftedFFITypes
-    Cabal.InterruptibleFFI           -> Just InterruptibleFFI
-    Cabal.CApiFFI                    -> Just CApiFFI
-    Cabal.LiberalTypeSynonyms        -> Just LiberalTypeSynonyms
-    Cabal.TypeOperators              -> Just TypeOperators
-    Cabal.RecordWildCards            -> Just RecordWildCards
-    Cabal.RecordPuns                 -> Just RecordPuns
-    Cabal.NamedFieldPuns             -> Just RecordPuns
-    Cabal.DisambiguateRecordFields   -> Just DisambiguateRecordFields
-    Cabal.TraditionalRecordSyntax    -> Just TraditionalRecordSyntax
-    Cabal.OverloadedStrings          -> Just OverloadedStrings
-    Cabal.GADTs                      -> Just GADTs
-    Cabal.GADTSyntax                 -> Just GADTSyntax
-    Cabal.RelaxedPolyRec             -> Just RelaxedPolyRec
-    Cabal.ExtendedDefaultRules       -> Just ExtendedDefaultRules
-    Cabal.UnboxedTuples              -> Just UnboxedTuples
-    Cabal.DeriveDataTypeable         -> Just DeriveDataTypeable
-    Cabal.AutoDeriveTypeable         -> Just DeriveDataTypeable
-    Cabal.DeriveGeneric              -> Just DeriveGeneric
-    Cabal.DefaultSignatures          -> Just DefaultSignatures
-    Cabal.InstanceSigs               -> Just InstanceSigs
-    Cabal.ConstrainedClassMethods    -> Just ConstrainedClassMethods
-    Cabal.PackageImports             -> Just PackageImports
-    Cabal.ImpredicativeTypes         -> Just ImpredicativeTypes
-    Cabal.PostfixOperators           -> Just PostfixOperators
-    Cabal.QuasiQuotes                -> Just QuasiQuotes
-    Cabal.TransformListComp          -> Just TransformListComp
-    Cabal.MonadComprehensions        -> Just MonadComprehensions
-    Cabal.ViewPatterns               -> Just ViewPatterns
-    Cabal.TupleSections              -> Just TupleSections
-    Cabal.GHCForeignImportPrim       -> Just GHCForeignImportPrim
-    Cabal.NPlusKPatterns             -> Just NPlusKPatterns
-    Cabal.DoAndIfThenElse            -> Just DoAndIfThenElse
-    Cabal.MultiWayIf                 -> Just MultiWayIf
-    Cabal.LambdaCase                 -> Just LambdaCase
-    Cabal.RebindableSyntax           -> Just RebindableSyntax
-    Cabal.ExplicitForAll             -> Just ExplicitForAll
-    Cabal.DatatypeContexts           -> Just DatatypeContexts
-    Cabal.MonoLocalBinds             -> Just MonoLocalBinds
-    Cabal.DeriveFunctor              -> Just DeriveFunctor
-    Cabal.DeriveTraversable          -> Just DeriveTraversable
-    Cabal.DeriveFoldable             -> Just DeriveFoldable
-    Cabal.NondecreasingIndentation   -> Just NondecreasingIndentation
-    Cabal.ConstraintKinds            -> Just ConstraintKinds
-    Cabal.PolyKinds                  -> Just PolyKinds
-    Cabal.DataKinds                  -> Just DataKinds
-    Cabal.ParallelArrays             -> Just ParallelArrays
-    Cabal.RoleAnnotations            -> Just RoleAnnotations
-    Cabal.OverloadedLists            -> Just OverloadedLists
-    Cabal.EmptyCase                  -> Just EmptyCase
-    Cabal.NegativeLiterals           -> Just NegativeLiterals
-    Cabal.BinaryLiterals             -> Just BinaryLiterals
-    Cabal.NumDecimals                -> Just NumDecimals
-    Cabal.NullaryTypeClasses         -> Just NullaryTypeClasses
-    Cabal.ExplicitNamespaces         -> Just ExplicitNamespaces
-    Cabal.AllowAmbiguousTypes        -> Just AllowAmbiguousTypes
-    Cabal.JavaScriptFFI              -> Just JavaScriptFFI
-    Cabal.PatternSynonyms            -> Just PatternSynonyms
-    Cabal.PartialTypeSignatures      -> Just PartialTypeSignatures
-    Cabal.NamedWildCards             -> Just NamedWildCards
-    Cabal.DeriveAnyClass             -> Just DeriveAnyClass
-    Cabal.DeriveLift                 -> Just DeriveLift
-    Cabal.StaticPointers             -> Just StaticPointers
-    Cabal.StrictData                 -> Just StrictData
-    Cabal.Strict                     -> Just Strict
-    Cabal.ApplicativeDo              -> Just ApplicativeDo
-    Cabal.DuplicateRecordFields      -> Just DuplicateRecordFields
-    Cabal.TypeApplications           -> Just TypeApplications
-    Cabal.TypeInType                 -> Just TypeInType
-    Cabal.UndecidableSuperClasses    -> Just UndecidableSuperClasses
-    Cabal.MonadFailDesugaring        -> Just MonadFailDesugaring
-    Cabal.TemplateHaskellQuotes      -> Just TemplateHaskellQuotes
-    Cabal.OverloadedLabels           -> Just OverloadedLabels
-    Cabal.TypeFamilyDependencies     -> Just TypeFamilyDependencies
-    Cabal.DerivingStrategies         -> Just DerivingStrategies
-    Cabal.DerivingVia                -> Just DerivingVia
-    Cabal.UnboxedSums                -> Just UnboxedSums
-    Cabal.HexFloatLiterals           -> Just HexFloatLiterals
-    Cabal.BlockArguments             -> Just BlockArguments
-    Cabal.NumericUnderscores         -> Just NumericUnderscores
-    Cabal.QuantifiedConstraints      -> Just QuantifiedConstraints
-    Cabal.StarIsType                 -> Just StarIsType
-    Cabal.EmptyDataDeriving          -> Just EmptyDataDeriving
+    Cabal.OverlappingInstances              -> Just OverlappingInstances
+    Cabal.UndecidableInstances              -> Just UndecidableInstances
+    Cabal.IncoherentInstances               -> Just IncoherentInstances
+    Cabal.DoRec                             -> Just RecursiveDo
+    Cabal.RecursiveDo                       -> Just RecursiveDo
+    Cabal.ParallelListComp                  -> Just ParallelListComp
+    Cabal.MultiParamTypeClasses             -> Just MultiParamTypeClasses
+    Cabal.MonomorphismRestriction           -> Just MonomorphismRestriction
+    Cabal.FunctionalDependencies            -> Just FunctionalDependencies
+    Cabal.Rank2Types                        -> Just RankNTypes
+    Cabal.RankNTypes                        -> Just RankNTypes
+    Cabal.PolymorphicComponents             -> Just RankNTypes
+    Cabal.ExistentialQuantification         -> Just ExistentialQuantification
+    Cabal.ScopedTypeVariables               -> Just ScopedTypeVariables
+    Cabal.PatternSignatures                 -> Just ScopedTypeVariables
+    Cabal.ImplicitParams                    -> Just ImplicitParams
+    Cabal.FlexibleContexts                  -> Just FlexibleContexts
+    Cabal.FlexibleInstances                 -> Just FlexibleInstances
+    Cabal.EmptyDataDecls                    -> Just EmptyDataDecls
+    Cabal.CPP                               -> Just Cpp
+    Cabal.KindSignatures                    -> Just KindSignatures
+    Cabal.BangPatterns                      -> Just BangPatterns
+    Cabal.TypeSynonymInstances              -> Just TypeSynonymInstances
+    Cabal.TemplateHaskell                   -> Just TemplateHaskell
+    Cabal.ForeignFunctionInterface          -> Just ForeignFunctionInterface
+    Cabal.Arrows                            -> Just Arrows
+    Cabal.ImplicitPrelude                   -> Just ImplicitPrelude
+    Cabal.PatternGuards                     -> Just PatternGuards
+    Cabal.GeneralizedNewtypeDeriving        -> Just GeneralizedNewtypeDeriving
+    Cabal.GeneralisedNewtypeDeriving        -> Just GeneralizedNewtypeDeriving
+    Cabal.MagicHash                         -> Just MagicHash
+    Cabal.TypeFamilies                      -> Just TypeFamilies
+    Cabal.StandaloneDeriving                -> Just StandaloneDeriving
+    Cabal.UnicodeSyntax                     -> Just UnicodeSyntax
+    Cabal.UnliftedFFITypes                  -> Just UnliftedFFITypes
+    Cabal.InterruptibleFFI                  -> Just InterruptibleFFI
+    Cabal.CApiFFI                           -> Just CApiFFI
+    Cabal.LiberalTypeSynonyms               -> Just LiberalTypeSynonyms
+    Cabal.TypeOperators                     -> Just TypeOperators
+    Cabal.RecordWildCards                   -> Just RecordWildCards
+#if MIN_VERSION_ghc_boot_th(9,4,1)
+    Cabal.RecordPuns                        -> Just NamedFieldPuns
+    Cabal.NamedFieldPuns                    -> Just NamedFieldPuns
+#else
+    Cabal.RecordPuns                        -> Just RecordPuns
+    Cabal.NamedFieldPuns                    -> Just RecordPuns
+#endif
+    Cabal.DisambiguateRecordFields          -> Just DisambiguateRecordFields
+    Cabal.TraditionalRecordSyntax           -> Just TraditionalRecordSyntax
+    Cabal.OverloadedStrings                 -> Just OverloadedStrings
+    Cabal.GADTs                             -> Just GADTs
+    Cabal.GADTSyntax                        -> Just GADTSyntax
+    Cabal.RelaxedPolyRec                    -> Just RelaxedPolyRec
+    Cabal.ExtendedDefaultRules              -> Just ExtendedDefaultRules
+    Cabal.UnboxedTuples                     -> Just UnboxedTuples
+    Cabal.DeriveDataTypeable                -> Just DeriveDataTypeable
+    Cabal.AutoDeriveTypeable                -> Just DeriveDataTypeable
+    Cabal.DeriveGeneric                     -> Just DeriveGeneric
+    Cabal.DefaultSignatures                 -> Just DefaultSignatures
+    Cabal.InstanceSigs                      -> Just InstanceSigs
+    Cabal.ConstrainedClassMethods           -> Just ConstrainedClassMethods
+    Cabal.PackageImports                    -> Just PackageImports
+    Cabal.ImpredicativeTypes                -> Just ImpredicativeTypes
+    Cabal.PostfixOperators                  -> Just PostfixOperators
+    Cabal.QuasiQuotes                       -> Just QuasiQuotes
+    Cabal.TransformListComp                 -> Just TransformListComp
+    Cabal.MonadComprehensions               -> Just MonadComprehensions
+    Cabal.ViewPatterns                      -> Just ViewPatterns
+    Cabal.TupleSections                     -> Just TupleSections
+    Cabal.GHCForeignImportPrim              -> Just GHCForeignImportPrim
+    Cabal.NPlusKPatterns                    -> Just NPlusKPatterns
+    Cabal.DoAndIfThenElse                   -> Just DoAndIfThenElse
+    Cabal.MultiWayIf                        -> Just MultiWayIf
+    Cabal.LambdaCase                        -> Just LambdaCase
+    Cabal.RebindableSyntax                  -> Just RebindableSyntax
+    Cabal.ExplicitForAll                    -> Just ExplicitForAll
+    Cabal.DatatypeContexts                  -> Just DatatypeContexts
+    Cabal.MonoLocalBinds                    -> Just MonoLocalBinds
+    Cabal.DeriveFunctor                     -> Just DeriveFunctor
+    Cabal.DeriveTraversable                 -> Just DeriveTraversable
+    Cabal.DeriveFoldable                    -> Just DeriveFoldable
+    Cabal.NondecreasingIndentation          -> Just NondecreasingIndentation
+    Cabal.ConstraintKinds                   -> Just ConstraintKinds
+    Cabal.PolyKinds                         -> Just PolyKinds
+    Cabal.DataKinds                         -> Just DataKinds
+    Cabal.ParallelArrays                    -> Just ParallelArrays
+    Cabal.RoleAnnotations                   -> Just RoleAnnotations
+    Cabal.OverloadedLists                   -> Just OverloadedLists
+    Cabal.EmptyCase                         -> Just EmptyCase
+    Cabal.NegativeLiterals                  -> Just NegativeLiterals
+    Cabal.BinaryLiterals                    -> Just BinaryLiterals
+    Cabal.NumDecimals                       -> Just NumDecimals
+    Cabal.NullaryTypeClasses                -> Just NullaryTypeClasses
+    Cabal.ExplicitNamespaces                -> Just ExplicitNamespaces
+    Cabal.AllowAmbiguousTypes               -> Just AllowAmbiguousTypes
+    Cabal.JavaScriptFFI                     -> Just JavaScriptFFI
+    Cabal.PatternSynonyms                   -> Just PatternSynonyms
+    Cabal.PartialTypeSignatures             -> Just PartialTypeSignatures
+    Cabal.NamedWildCards                    -> Just NamedWildCards
+    Cabal.DeriveAnyClass                    -> Just DeriveAnyClass
+    Cabal.DeriveLift                        -> Just DeriveLift
+    Cabal.StaticPointers                    -> Just StaticPointers
+    Cabal.StrictData                        -> Just StrictData
+    Cabal.Strict                            -> Just Strict
+    Cabal.ApplicativeDo                     -> Just ApplicativeDo
+    Cabal.DuplicateRecordFields             -> Just DuplicateRecordFields
+    Cabal.TypeApplications                  -> Just TypeApplications
+    Cabal.TypeInType                        -> Just TypeInType
+    Cabal.UndecidableSuperClasses           -> Just UndecidableSuperClasses
+#if MIN_VERSION_ghc_boot_th(9,2,1)
+    Cabal.MonadFailDesugaring               -> Nothing
+#else
+    Cabal.MonadFailDesugaring               -> Just MonadFailDesugaring
+#endif
+    Cabal.TemplateHaskellQuotes             -> Just TemplateHaskellQuotes
+    Cabal.OverloadedLabels                  -> Just OverloadedLabels
+    Cabal.TypeFamilyDependencies            -> Just TypeFamilyDependencies
+    Cabal.DerivingStrategies                -> Just DerivingStrategies
+    Cabal.DerivingVia                       -> Just DerivingVia
+    Cabal.UnboxedSums                       -> Just UnboxedSums
+    Cabal.HexFloatLiterals                  -> Just HexFloatLiterals
+    Cabal.BlockArguments                    -> Just BlockArguments
+    Cabal.NumericUnderscores                -> Just NumericUnderscores
+    Cabal.QuantifiedConstraints             -> Just QuantifiedConstraints
+    Cabal.StarIsType                        -> Just StarIsType
+    Cabal.EmptyDataDeriving                 -> Just EmptyDataDeriving
 #if __GLASGOW_HASKELL__ >= 810
-    Cabal.CUSKs                    -> Just CUSKs
-    Cabal.ImportQualifiedPost      -> Just ImportQualifiedPost
-    Cabal.StandaloneKindSignatures -> Just StandaloneKindSignatures
-    Cabal.UnliftedNewtypes         -> Just UnliftedNewtypes
+    Cabal.CUSKs                             -> Just CUSKs
+    Cabal.ImportQualifiedPost               -> Just ImportQualifiedPost
+    Cabal.StandaloneKindSignatures          -> Just StandaloneKindSignatures
+    Cabal.UnliftedNewtypes                  -> Just UnliftedNewtypes
 #endif
 #if __GLASGOW_HASKELL__ >= 900
-    Cabal.LexicalNegation -> Just LexicalNegation
-    Cabal.QualifiedDo     -> Just QualifiedDo
-    Cabal.LinearTypes     -> Just LinearTypes
+    Cabal.LexicalNegation                   -> Just LexicalNegation
+    Cabal.QualifiedDo                       -> Just QualifiedDo
+    Cabal.LinearTypes                       -> Just LinearTypes
+#endif
+#if __GLASGOW_HASKELL__ >= 902
+    Cabal.FieldSelectors                    -> Just FieldSelectors
+    Cabal.OverloadedRecordDot               -> Just OverloadedRecordDot
+    Cabal.UnliftedDatatypes                 -> Just UnliftedDatatypes
+#endif
+#if __GLASGOW_HASKELL__ >= 904
+    Cabal.OverloadedRecordUpdate            -> Just OverloadedRecordUpdate
+    Cabal.AlternativeLayoutRule             -> Just AlternativeLayoutRule
+    Cabal.AlternativeLayoutRuleTransitional -> Just AlternativeLayoutRuleTransitional
+    Cabal.RelaxedLayout                     -> Just RelaxedLayout
 #endif
     -- GHC extensions, parsed by both Cabal and GHC, but don't have an Extension constructor
-    Cabal.Safe                   -> Nothing
-    Cabal.Trustworthy            -> Nothing
-    Cabal.Unsafe                 -> Nothing
+    Cabal.Safe                              -> Nothing
+    Cabal.Trustworthy                       -> Nothing
+    Cabal.Unsafe                            -> Nothing
     -- non-GHC extensions
-    Cabal.Generics               -> Nothing
-    Cabal.ExtensibleRecords      -> Nothing
-    Cabal.RestrictedTypeSynonyms -> Nothing
-    Cabal.HereDocuments          -> Nothing
-    Cabal.MonoPatBinds           -> Nothing
-    Cabal.XmlSyntax              -> Nothing
-    Cabal.RegularPatterns        -> Nothing
-    Cabal.SafeImports            -> Nothing
-    Cabal.NewQualifiedOperators  -> Nothing
+    Cabal.Generics                          -> Nothing
+    Cabal.ExtensibleRecords                 -> Nothing
+    Cabal.RestrictedTypeSynonyms            -> Nothing
+    Cabal.HereDocuments                     -> Nothing
+    Cabal.MonoPatBinds                      -> Nothing
+    Cabal.XmlSyntax                         -> Nothing
+    Cabal.RegularPatterns                   -> Nothing
+    Cabal.SafeImports                       -> Nothing
+    Cabal.NewQualifiedOperators             -> Nothing
 
 -- | Convert 'Cabal.KnownExtension' to 'SafeHaskellExtension'.
 toSafeExtensions :: Cabal.KnownExtension -> Maybe SafeHaskellExtension
