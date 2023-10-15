@@ -351,22 +351,55 @@ toGhcExtension = \case
     Cabal.ImportQualifiedPost               -> Just ImportQualifiedPost
     Cabal.StandaloneKindSignatures          -> Just StandaloneKindSignatures
     Cabal.UnliftedNewtypes                  -> Just UnliftedNewtypes
+#else
+    Cabal.CUSKs                             -> Nothing
+    Cabal.ImportQualifiedPost               -> Nothing
+    Cabal.StandaloneKindSignatures          -> Nothing
+    Cabal.UnliftedNewtypes                  -> Nothing
 #endif
 #if __GLASGOW_HASKELL__ >= 900
     Cabal.LexicalNegation                   -> Just LexicalNegation
     Cabal.QualifiedDo                       -> Just QualifiedDo
     Cabal.LinearTypes                       -> Just LinearTypes
+#else
+    Cabal.LexicalNegation                   -> Nothing
+    Cabal.QualifiedDo                       -> Nothing
+    Cabal.LinearTypes                       -> Nothing
 #endif
 #if __GLASGOW_HASKELL__ >= 902
     Cabal.FieldSelectors                    -> Just FieldSelectors
     Cabal.OverloadedRecordDot               -> Just OverloadedRecordDot
     Cabal.UnliftedDatatypes                 -> Just UnliftedDatatypes
+#else
+    Cabal.FieldSelectors                    -> Nothing
+    Cabal.OverloadedRecordDot               -> Nothing
+    Cabal.UnliftedDatatypes                 -> Nothing
 #endif
 #if __GLASGOW_HASKELL__ >= 904
     Cabal.OverloadedRecordUpdate            -> Just OverloadedRecordUpdate
     Cabal.AlternativeLayoutRule             -> Just AlternativeLayoutRule
     Cabal.AlternativeLayoutRuleTransitional -> Just AlternativeLayoutRuleTransitional
     Cabal.RelaxedLayout                     -> Just RelaxedLayout
+#else
+    Cabal.OverloadedRecordUpdate            -> Nothing
+    Cabal.AlternativeLayoutRule             -> Nothing
+    Cabal.AlternativeLayoutRuleTransitional -> Nothing
+    Cabal.RelaxedLayout                     -> Nothing
+#endif
+#if __GLASGOW_HASKELL__ >= 906
+    Cabal.DeepSubsumption                   -> Just DeepSubsumption
+    Cabal.TypeData                          -> Just TypeData
+#else
+    Cabal.DeepSubsumption                   -> Nothing
+    Cabal.TypeData                          -> Nothing
+#endif
+#if __GLASGOW_HASKELL__ >= 910
+    -- This branch cannot be satisfied yet but we're including it so
+    -- we don't forget to enablel RequiredTypeArguments when it
+    -- becomes available.
+    Cabal.RequiredTypeArguments             -> Just RequiredTypeArguments
+#else
+    Cabal.RequiredTypeArguments             -> Nothing
 #endif
     -- GHC extensions, parsed by both Cabal and GHC, but don't have an Extension constructor
     Cabal.Safe                              -> Nothing
