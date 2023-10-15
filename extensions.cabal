@@ -119,7 +119,7 @@ test-suite extensions-test
                      , bytestring
                      , containers
                      , ghc-boot-th
-                     , hedgehog >= 1.0 && < 1.3
+                     , hedgehog >= 1.0 && < 1.5
                      , hspec
                      , hspec-hedgehog ^>= 0.0.1
                      , text
