@@ -1,6 +1,6 @@
 cabal-version:       2.4
 name:                extensions
-version:             0.1.0.0
+version:             0.1.0.1
 synopsis:            Parse Haskell Language Extensions
 description:         Parse Haskell Language Extensions.
                      See [README.md](https://github.com/kowainik/extensions#extensions) for more details.
