@@ -393,13 +393,22 @@ toGhcExtension = \case
     Cabal.DeepSubsumption                   -> Nothing
     Cabal.TypeData                          -> Nothing
 #endif
+#if __GLASGOW_HASKELL__ >= 908
+    Cabal.TypeAbstractions                  -> Just TypeAbstractions
+#else
+    Cabal.TypeAbstractions                  -> Nothing
+#endif
 #if __GLASGOW_HASKELL__ >= 910
     -- This branch cannot be satisfied yet but we're including it so
     -- we don't forget to enable RequiredTypeArguments when it
     -- becomes available.
     Cabal.RequiredTypeArguments             -> Just RequiredTypeArguments
+    Cabal.ExtendedLiterals                  -> Just ExtendedLiterals
+    Cabal.ListTuplePuns                     -> Just ListTuplePuns
 #else
     Cabal.RequiredTypeArguments             -> Nothing
+    Cabal.ExtendedLiterals                  -> Nothing
+    Cabal.ListTuplePuns                     -> Nothing
 #endif
     -- GHC extensions, parsed by both Cabal and GHC, but don't have an Extension constructor
     Cabal.Safe                              -> Nothing
