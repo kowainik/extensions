@@ -395,7 +395,7 @@ toGhcExtension = \case
 #endif
 #if __GLASGOW_HASKELL__ >= 910
     -- This branch cannot be satisfied yet but we're including it so
-    -- we don't forget to enablel RequiredTypeArguments when it
+    -- we don't forget to enable RequiredTypeArguments when it
     -- becomes available.
     Cabal.RequiredTypeArguments             -> Just RequiredTypeArguments
 #else
