@@ -22,6 +22,7 @@ tested-with:         GHC == 8.8.4
                      GHC == 9.4.2
                      GHC == 9.6.3
                      GHC == 9.8.1
+                     GHC == 9.10.1
 
 flag executable
   description: Build the extensions executable
