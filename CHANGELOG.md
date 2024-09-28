@@ -3,6 +3,10 @@
 `extensions` uses [PVP Versioning][1].
 The changelog is available [on GitHub][2].
 
+## 0.1.0.3 — Sep 28, 2024
+
+* Support `Cabal` `3.14` (only)
+
 ## 0.1.0.2 — Apr 29, 2024
 
 * Add support for GHC-9.8
