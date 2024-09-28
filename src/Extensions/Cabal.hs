@@ -117,14 +117,14 @@ extractCabalExtensions GenericPackageDescription{..} = mconcat
     foreignToExtensions = condTreeToExtensions (const []) foreignLibBuildInfo
 
     exeToExtensions :: CondTree var deps Executable -> IO (Map FilePath ParsedExtensions)
-    exeToExtensions = condTreeToExtensions (\Executable{..} -> [modulePath]) buildInfo
+    exeToExtensions = condTreeToExtensions (\Executable{..} -> [getSymbolicPath modulePath]) buildInfo
 
     testToExtensions :: CondTree var deps TestSuite -> IO (Map FilePath ParsedExtensions)
     testToExtensions = condTreeToExtensions testMainPath testBuildInfo
       where
         testMainPath :: TestSuite -> [FilePath]
         testMainPath TestSuite{..} = case testInterface of
-            TestSuiteExeV10 _ path -> [path]
+            TestSuiteExeV10 _ path -> [getSymbolicPath path]
             TestSuiteLibV09 _ m    -> [toModulePath m]
             TestSuiteUnsupported _ -> []
 
@@ -133,7 +133,7 @@ extractCabalExtensions GenericPackageDescription{..} = mconcat
       where
         benchMainPath :: Benchmark -> [FilePath]
         benchMainPath Benchmark{..} = case benchmarkInterface of
-            BenchmarkExeV10 _ path -> [path]
+            BenchmarkExeV10 _ path -> [getSymbolicPath path]
             BenchmarkUnsupported _ -> []
 
 condTreeToExtensions
@@ -399,9 +399,6 @@ toGhcExtension = \case
     Cabal.TypeAbstractions                  -> Nothing
 #endif
 #if __GLASGOW_HASKELL__ >= 910
-    -- This branch cannot be satisfied yet but we're including it so
-    -- we don't forget to enable RequiredTypeArguments when it
-    -- becomes available.
     Cabal.RequiredTypeArguments             -> Just RequiredTypeArguments
     Cabal.ExtendedLiterals                  -> Just ExtendedLiterals
     Cabal.ListTuplePuns                     -> Just ListTuplePuns
@@ -409,6 +406,18 @@ toGhcExtension = \case
     Cabal.RequiredTypeArguments             -> Nothing
     Cabal.ExtendedLiterals                  -> Nothing
     Cabal.ListTuplePuns                     -> Nothing
+#endif
+#if __GLASGOW_HASKELL__ >= 912
+    -- This branch cannot be satisfied yet but we're including it so
+    -- we don't forget to enable RequiredTypeArguments when it
+    -- becomes available.
+    Cabal.NamedDefaults                     -> Just NamedDefaults
+    Cabal.MultilineStrings                  -> Just MultilineStrings
+    Cabal.OrPatterns                        -> Just OrPatterns
+#else
+    Cabal.NamedDefaults                     -> Nothing
+    Cabal.MultilineStrings                  -> Nothing
+    Cabal.OrPatterns                        -> Nothing
 #endif
     -- GHC extensions, parsed by both Cabal and GHC, but don't have an Extension constructor
     Cabal.Safe                              -> Nothing
