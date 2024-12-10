@@ -420,6 +420,9 @@ mixSpec = describe "Parsing combinations of different parts" $ do
             { parsedExtensionsAll  = [On Cpp]
             , parsedExtensionsSafe = Just Trustworthy
             }
+    itShouldParse "{- {- -} -}" []
+    itShouldParse "{- {-# LANGUAGE LambdaCase #-} -}" []
+    itShouldParse "{-# LANGUAGE LambdaCase {- -} #-}" [LambdaCase]
 
 itShouldParse :: String -> [Extension] -> SpecWith (Arg Expectation)
 itShouldParse s = itShouldParseOnOff s . map On
