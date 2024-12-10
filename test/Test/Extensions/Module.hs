@@ -69,6 +69,9 @@ onlyExtensionsSpec = describe "Parsing only extensions without anything else" $ 
     itShouldParseOnOff
         "{-# LANGUAGE NondecreasingIndentation #-}"
         [On NondecreasingIndentation]
+    itShouldParseOnOff
+        "{-# LANGUAGE PolymorphicComponents #-}"
+        [On RankNTypes]
     itShouldParse "{-#language TypeApplications#-}" [TypeApplications]
     itShouldParse "{-# LANGUAGE TypeApplications, LambdaCase#-}" [TypeApplications, LambdaCase]
     itShouldParse "{-# LANGUAGE   TypeApplications  , LambdaCase   #-}" [TypeApplications, LambdaCase]

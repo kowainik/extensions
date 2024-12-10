@@ -200,6 +200,7 @@ readExtension = \case
     "RecordPuns"                 -> Nothing
 #endif
     "Rank2Types"                 -> Just RankNTypes
+    "PolymorphicComponents"      -> Just RankNTypes
     "CPP"                        -> Just Cpp
     "Cpp"                        -> Nothing
     s                            -> readMaybe s
