@@ -408,9 +408,6 @@ toGhcExtension = \case
     Cabal.ListTuplePuns                     -> Nothing
 #endif
 #if __GLASGOW_HASKELL__ >= 912
-    -- This branch cannot be satisfied yet but we're including it so
-    -- we don't forget to enable RequiredTypeArguments when it
-    -- becomes available.
     Cabal.NamedDefaults                     -> Just NamedDefaults
     Cabal.MultilineStrings                  -> Just MultilineStrings
     Cabal.OrPatterns                        -> Just OrPatterns
