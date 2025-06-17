@@ -388,6 +388,11 @@ toGhcExtension = \case
     Cabal.DeepSubsumption                   -> Nothing
     Cabal.TypeData                          -> Nothing
 # endif
+# if __GLASGOW_HASKELL__ >= 910
+    Cabal.RequiredTypeArguments             -> Just RequiredTypeArguments
+# else
+    Cabal.RequiredTypeArguments             -> Nothing
+# endif
 #endif
 #if MIN_VERSION_Cabal_syntax(3,12,0)
 # if __GLASGOW_HASKELL__ >= 908
@@ -396,11 +401,9 @@ toGhcExtension = \case
     Cabal.TypeAbstractions                  -> Nothing
 # endif
 # if __GLASGOW_HASKELL__ >= 910
-    Cabal.RequiredTypeArguments             -> Just RequiredTypeArguments
     Cabal.ExtendedLiterals                  -> Just ExtendedLiterals
     Cabal.ListTuplePuns                     -> Just ListTuplePuns
 # else
-    Cabal.RequiredTypeArguments             -> Nothing
     Cabal.ExtendedLiterals                  -> Nothing
     Cabal.ListTuplePuns                     -> Nothing
 # endif
