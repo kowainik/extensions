@@ -380,35 +380,43 @@ toGhcExtension = \case
     Cabal.AlternativeLayoutRuleTransitional -> Nothing
     Cabal.RelaxedLayout                     -> Nothing
 #endif
-#if __GLASGOW_HASKELL__ >= 906
+#if MIN_VERSION_Cabal_syntax(3,10,0)
+# if __GLASGOW_HASKELL__ >= 906
     Cabal.DeepSubsumption                   -> Just DeepSubsumption
     Cabal.TypeData                          -> Just TypeData
-#else
+# else
     Cabal.DeepSubsumption                   -> Nothing
     Cabal.TypeData                          -> Nothing
+# endif
 #endif
-#if __GLASGOW_HASKELL__ >= 908
+#if MIN_VERSION_Cabal_syntax(3,12,0)
+# if __GLASGOW_HASKELL__ >= 908
     Cabal.TypeAbstractions                  -> Just TypeAbstractions
-#else
+# else
     Cabal.TypeAbstractions                  -> Nothing
-#endif
-#if __GLASGOW_HASKELL__ >= 910
+# endif
+# if __GLASGOW_HASKELL__ >= 910
     Cabal.RequiredTypeArguments             -> Just RequiredTypeArguments
     Cabal.ExtendedLiterals                  -> Just ExtendedLiterals
     Cabal.ListTuplePuns                     -> Just ListTuplePuns
-#else
+# else
     Cabal.RequiredTypeArguments             -> Nothing
     Cabal.ExtendedLiterals                  -> Nothing
     Cabal.ListTuplePuns                     -> Nothing
+# endif
 #endif
-#if __GLASGOW_HASKELL__ >= 912
+#if MIN_VERSION_Cabal_syntax(3,14,0)
+# if __GLASGOW_HASKELL__ >= 912
+    -- This branch cannot be satisfied yet but we're including it so
+    -- we don't forget to enable these when they become available.
     Cabal.NamedDefaults                     -> Just NamedDefaults
     Cabal.MultilineStrings                  -> Just MultilineStrings
     Cabal.OrPatterns                        -> Just OrPatterns
-#else
+# else
     Cabal.NamedDefaults                     -> Nothing
     Cabal.MultilineStrings                  -> Nothing
     Cabal.OrPatterns                        -> Nothing
+# endif
 #endif
     -- GHC extensions, parsed by both Cabal and GHC, but don't have an Extension constructor
     Cabal.Safe                              -> Nothing
