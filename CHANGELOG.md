@@ -3,6 +3,11 @@
 `extensions` uses [PVP Versioning][1].
 The changelog is available [on GitHub][2].
 
+## 0.1.0.4 — June, 2025
+
+* Dependency footprint reduced to only `Cabal-syntax`.
+* Compatibility range widened to `Cabal-syntax` `3.8`..`3.14`.
+
 ## 0.1.0.3 — Sep 28, 2024
 
 * Support `Cabal` `3.14` (only)
