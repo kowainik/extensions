@@ -41,9 +41,7 @@ import Distribution.Types.GenericPackageDescription (GenericPackageDescription (
 import Distribution.Types.Library (Library (..))
 import Distribution.Types.TestSuite (TestSuite (..))
 import Distribution.Types.TestSuiteInterface (TestSuiteInterface (..))
-#if MIN_VERSION_Cabal_syntax(3,6,0)
 import Distribution.Utils.Path (getSymbolicPath)
-#endif
 import GHC.LanguageExtensions.Type (Extension (..))
 import System.Directory (doesFileExist)
 import System.FilePath ((<.>), (</>))
@@ -117,14 +115,14 @@ extractCabalExtensions GenericPackageDescription{..} = mconcat
     foreignToExtensions = condTreeToExtensions (const []) foreignLibBuildInfo
 
     exeToExtensions :: CondTree var deps Executable -> IO (Map FilePath ParsedExtensions)
-    exeToExtensions = condTreeToExtensions (\Executable{..} -> [getSymbolicPath modulePath]) buildInfo
+    exeToExtensions = condTreeToExtensions (\Executable{..} -> [modulePath]) buildInfo
 
     testToExtensions :: CondTree var deps TestSuite -> IO (Map FilePath ParsedExtensions)
     testToExtensions = condTreeToExtensions testMainPath testBuildInfo
       where
         testMainPath :: TestSuite -> [FilePath]
         testMainPath TestSuite{..} = case testInterface of
-            TestSuiteExeV10 _ path -> [getSymbolicPath path]
+            TestSuiteExeV10 _ path -> [path]
             TestSuiteLibV09 _ m    -> [toModulePath m]
             TestSuiteUnsupported _ -> []
 
@@ -133,7 +131,7 @@ extractCabalExtensions GenericPackageDescription{..} = mconcat
       where
         benchMainPath :: Benchmark -> [FilePath]
         benchMainPath Benchmark{..} = case benchmarkInterface of
-            BenchmarkExeV10 _ path -> [getSymbolicPath path]
+            BenchmarkExeV10 _ path -> [path]
             BenchmarkUnsupported _ -> []
 
 condTreeToExtensions
@@ -147,11 +145,7 @@ condTreeToExtensions
 condTreeToExtensions extractModules extractBuildInfo condTree = do
     let comp = condTreeData condTree
     let buildInfo = extractBuildInfo comp
-#if MIN_VERSION_Cabal_syntax(3,6,0)
-    let srcDirs = getSymbolicPath <$> hsSourceDirs buildInfo
-#else
-    let srcDirs = hsSourceDirs buildInfo
-#endif
+    let srcDirs = getSymbolicPath <$> hsSourceDirs buildInfo :: [FilePath]
     let modules = extractModules comp ++
             map toModulePath (otherModules buildInfo ++ autogenModules buildInfo)
     let (safeExts, parsedExtensionsAll) = partitionEithers $ mapMaybe cabalToGhcExtension $ defaultExtensions buildInfo
