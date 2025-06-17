@@ -9,17 +9,21 @@ on:
 
 jobs:
   build:
-    name: ghc ${{ matrix.ghc }}
+    name: ghc ${{ matrix.ghc }}, cabal ${{ matrix.cabal }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        cabal: ["3.8"]
+        cabal:
+          - "3.8"
+          - "3.10"
+          - "3.12"
+          - "3.14"
         ghc:
-          - "8.8.4"
-          - "8.10.7"
-          - "9.0.2"
-          - "9.2.4"
+          #- "8.8.4"
+          #- "8.10.7"
+          #- "9.0.2"
+          #- "9.2.4"
           - "9.4.8"
           - "9.6.3"
           - "9.8.1"
@@ -45,7 +49,10 @@ jobs:
     - name: Build
       run: |
         cabal v2-update
-        cabal v2-build --enable-tests --enable-benchmarks
+        cabal v2-configure \
+          --constraint 'Cabal-syntax installed' \
+          --enable-tests --enable-benchmarks
+        cabal v2-build
 
     - name: Test
       run: |
