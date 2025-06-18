@@ -41,7 +41,7 @@ import Distribution.Types.GenericPackageDescription (GenericPackageDescription (
 import Distribution.Types.Library (Library (..))
 import Distribution.Types.TestSuite (TestSuite (..))
 import Distribution.Types.TestSuiteInterface (TestSuiteInterface (..))
-#if MIN_VERSION_Cabal(3,6,0)
+#if MIN_VERSION_Cabal_syntax(3,6,0)
 import Distribution.Utils.Path (getSymbolicPath)
 #endif
 import GHC.LanguageExtensions.Type (Extension (..))
@@ -147,7 +147,7 @@ condTreeToExtensions
 condTreeToExtensions extractModules extractBuildInfo condTree = do
     let comp = condTreeData condTree
     let buildInfo = extractBuildInfo comp
-#if MIN_VERSION_Cabal(3,6,0)
+#if MIN_VERSION_Cabal_syntax(3,6,0)
     let srcDirs = getSymbolicPath <$> hsSourceDirs buildInfo
 #else
     let srcDirs = hsSourceDirs buildInfo

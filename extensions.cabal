@@ -86,15 +86,15 @@ library
 
   build-depends:       bytestring >= 0.10 && < 0.13
                        -- We need to pin a single major version of
-                       -- Cabal here because the main reason we use
-                       -- Cabal is for its list of extensions.  Later
+                       -- Cabal-syntax here because the main reason we use
+                       -- Cabal-syntax is for its list of extensions.  Later
                        -- versions have strictly more extensions, and
                        -- we'll have missing patterns if we try to
                        -- support more than one major version.  If
                        -- this causes problems in practice let's
                        -- revisit this decision and come up with
                        -- another approach.
-                     , Cabal ^>= 3.14
+                     , Cabal-syntax ^>= 3.14
                      , containers >= 0.6 && < 0.8
                      , directory ^>= 1.3
                      , filepath >= 1.4 && < 1.6
