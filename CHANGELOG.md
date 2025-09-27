@@ -3,6 +3,18 @@
 `extensions` uses [PVP Versioning][1].
 The changelog is available [on GitHub][2].
 
+## 0.1.1.0 — Sep 27, 2025
+
+* Support `PolymorphicComponents`
+
+* Parse nested comments
+
+* Support GHC 9.12
+
+* Depend on `Cabal-syntax`, not `Cabal`
+
+* Add support for `Cabal-syntax` `3.16`
+
 ## 0.1.0.3 — Sep 28, 2024
 
 * Support `Cabal` `3.14` (only)
