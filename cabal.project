@@ -1,0 +1,3 @@
+packages: extensions.cabal
+
+allow-newer: boring:base
