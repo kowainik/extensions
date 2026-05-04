@@ -131,7 +131,7 @@ test-suite extensions-test
                      , bytestring
                      , containers
                      , ghc-boot-th
-                     , hedgehog >= 1.0 && < 1.6
+                     , hedgehog >= 1.0 && < 1.8
                      , hspec
                      , hspec-hedgehog >= 0.0.1 && < 0.4
                      , text
