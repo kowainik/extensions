@@ -115,7 +115,7 @@ executable extensions
                      , containers
                      , directory
                      , filepath
-                     , optparse-applicative >= 0.15 && < 0.19
+                     , optparse-applicative >= 0.15 && < 0.20
                      , text
 
 test-suite extensions-test
